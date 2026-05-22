@@ -605,8 +605,8 @@ function onMotion(e) {
   // Live value display
   sigVal.textContent = mag.toFixed(2) + ' m/s²';
 
-  // Track calibration peak
-  if (S.calibTid !== null) S.calibPeak = Math.max(S.calibPeak, mag);
+  // Track calibration peak only during the measurement window (not prep countdown)
+  if (S.calibTid !== null && calibPrepTid === null) S.calibPeak = Math.max(S.calibPeak, mag);
 
   // Update adaptive baseline
   updateAdaptive(mag);
@@ -970,41 +970,65 @@ document.querySelectorAll('.chip-btn').forEach(btn => {
 });
 
 // ── Auto-calibration ───────────────────────────────────────────────────────
-const CALIB_MS = 5000;
+const CALIB_PREP_MS = 3000;  // get-into-position countdown
+const CALIB_MS      = 5000;  // actual measurement window
+let   calibPrepTid  = null;
 
 btnCalib.addEventListener('click', () => {
-  if (S.calibTid !== null) return;
-  S.calibPeak = 0;
+  if (S.calibTid !== null || calibPrepTid !== null) return;
+  S.calibPeak       = 0;
   btnCalib.disabled = true;
 
-  let remaining = Math.ceil(CALIB_MS / 1000);
-  calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
-  const cid = setInterval(() => {
-    remaining--;
-    if (remaining > 0) calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
+  // ── Phase 1: preparation countdown ──
+  let prep = Math.ceil(CALIB_PREP_MS / 1000);
+  calibStatus.textContent = `Mettez-vous en position… ${prep} s`;
+
+  const prepCid = setInterval(() => {
+    prep--;
+    calibStatus.textContent = prep > 0
+      ? `Mettez-vous en position… ${prep} s`
+      : 'Faites vos pompes !';
   }, 1000);
 
-  S.calibTid = setTimeout(() => {
-    clearInterval(cid);
-    S.calibTid        = null;
-    btnCalib.disabled = false;
+  calibPrepTid = setTimeout(() => {
+    clearInterval(prepCid);
+    calibPrepTid = null;
 
-    if (S.calibPeak < 0.05) {
-      calibStatus.textContent = 'Signal trop faible — refaites la calibration en descendant la poitrine jusqu\'au téléphone.';
-      return;
-    }
-    const suggested        = Math.round(S.calibPeak * 0.55 * 10) / 10;
-    S.threshold            = suggested;
-    S.autoThr              = false;
-    autoThrTog.checked     = false;
-    thrRange.disabled      = false;
-    thrRange.value         = Math.min(10, suggested);
-    thrLbl.textContent     = suggested + ' m/s²';
-    calibStatus.textContent =
-      `Pic : ${S.calibPeak.toFixed(2)} m/s² → seuil réglé à ${suggested} m/s²`;
-    saveSettings();
-    toast(`Seuil réglé : ${suggested} m/s²`);
-  }, CALIB_MS);
+    // ── Phase 2: measurement window ──
+    S.calibPeak = 0;  // reset any signal picked up during prep
+    let remaining = Math.ceil(CALIB_MS / 1000);
+    calibStatus.textContent = `Descendez la poitrine sur le téléphone… ${remaining} s`;
+
+    const measCid = setInterval(() => {
+      remaining--;
+      if (remaining > 0)
+        calibStatus.textContent = `Descendez la poitrine sur le téléphone… ${remaining} s`;
+    }, 1000);
+
+    S.calibTid = setTimeout(() => {
+      clearInterval(measCid);
+      S.calibTid        = null;
+      btnCalib.disabled = false;
+
+      if (S.calibPeak < 0.05) {
+        calibStatus.textContent =
+          'Signal trop faible — refaites la calibration en descendant la poitrine jusqu\'au téléphone.';
+        return;
+      }
+      const suggested        = Math.round(S.calibPeak * 0.55 * 10) / 10;
+      S.threshold            = suggested;
+      S.autoThr              = false;
+      autoThrTog.checked     = false;
+      thrRange.disabled      = false;
+      thrRange.value         = Math.min(10, suggested);
+      thrLbl.textContent     = suggested + ' m/s²';
+      calibStatus.textContent =
+        `Pic : ${S.calibPeak.toFixed(2)} m/s² → seuil réglé à ${suggested} m/s²`;
+      saveSettings();
+      toast(`Seuil réglé : ${suggested} m/s²`);
+    }, CALIB_MS);
+
+  }, CALIB_PREP_MS);
 });
 
 function saveSettings() {
