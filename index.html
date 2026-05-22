@@ -334,7 +334,7 @@
           <span class="row-name">Seuil de détection</span>
           <span class="row-val" id="thr-lbl">auto</span>
         </div>
-        <input type="range" id="thr-range" min="0.2" max="10" step="0.1" value="1.5" disabled>
+        <input type="range" id="thr-range" min="0.1" max="8" step="0.05" value="0.6" disabled>
         <p class="row-hint">Désactivez le seuil auto pour régler manuellement. Consultez "Accéléromètre" sur l'écran compteur et réglez à 50–70 % du pic de contact.</p>
       </div>
 
@@ -479,7 +479,7 @@ const S = {
   wakeLock:   null,
   lastRepMs:  0,
   // Settings
-  threshold:  1.5,
+  threshold:  0.6,
   autoThr:    true,
   cooldownMs: 700,
   vibrate:    true,
@@ -495,11 +495,16 @@ const S = {
 // ── Detection state (separate from S for clarity) ─────────────────────────
 const DET = {
   pkState:  'FLAT',   // 'FLAT' | 'CLIMBING'
-  pkMax:    0,        // current peak maximum
-  pkStart:  0,        // timestamp when we entered CLIMBING
-  noiseEMA: 0,        // slow EMA of quiet signal (noise floor)
-  peakEMA:  2.0,      // EMA of recent confirmed peak heights
+  pkMax:    0,
+  pkStart:  0,
+  noiseEMA: 0,
+  peakEMA:  1.5,      // initial expected peak (impact-delta signal is smaller than raw)
 };
+
+// ── Baseline tracker for gravity-inclusive signal ──────────────────────────
+// Slow EMA tracks the resting orientation of each axis (~6 s time constant at 50 Hz).
+// Subtracting it from the raw reading isolates the dynamic impact component.
+const BASE = { x: null, y: null, z: null, ALPHA: 0.997 };
 
 // ── Signal buffer for canvas ───────────────────────────────────────────────
 const sigBuf  = new Float32Array(SIG_N);
@@ -580,35 +585,50 @@ function startMotion() {
 
 function onMotion(e) {
   let mag;
-  const a = e.acceleration;
+  const a  = e.acceleration;
+  const ag = e.accelerationIncludingGravity;
 
-  if (a && a.z !== null) {
-    // Z-axis primary: most relevant for flat-phone impact detection
+  // Check if gravity-free acceleration is usable (non-null and non-zero).
+  // Some iOS devices return {x:0, y:0, z:0} which is indistinguishable from
+  // true rest — so we also try the baseline-delta path when gf is all-zero.
+  const gfSum = a ? Math.abs(a.x||0) + Math.abs(a.y||0) + Math.abs(a.z||0) : 0;
+  const gfOk  = a && a.z !== null && gfSum > 0.02;
+
+  if (gfOk) {
+    // Gravity-free path (Android, some iOS): z is the impact axis when flat
     const az = Math.abs(a.z || 0);
     const ax = Math.abs(a.x || 0);
     const ay = Math.abs(a.y || 0);
-    // Weight Z heavily; small lateral contribution for robustness
     mag = az + (ax + ay) * 0.15;
-  } else if (a && a.x !== null) {
-    mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  } else if (ag && ag.z !== null) {
+    // Gravity-inclusive path (most iOS): subtract slow baseline to get dynamic part.
+    // Baseline tracks resting orientation slowly (~6 s time constant) so it
+    // doesn't follow brief impacts but does follow tilt changes.
+    const rawX = ag.x || 0, rawY = ag.y || 0, rawZ = ag.z || 0;
+    if (BASE.z === null) {
+      BASE.x = rawX; BASE.y = rawY; BASE.z = rawZ;
+    } else {
+      BASE.x = BASE.ALPHA * BASE.x + (1 - BASE.ALPHA) * rawX;
+      BASE.y = BASE.ALPHA * BASE.y + (1 - BASE.ALPHA) * rawY;
+      BASE.z = BASE.ALPHA * BASE.z + (1 - BASE.ALPHA) * rawZ;
+    }
+    const dz = rawZ - BASE.z;
+    const dx = rawX - BASE.x;
+    const dy = rawY - BASE.y;
+    // Weight z heavily (main impact direction when phone is flat)
+    mag = Math.abs(dz) + 0.15 * Math.sqrt(dx * dx + dy * dy);
   } else {
-    const ag = e.accelerationIncludingGravity;
-    if (!ag || ag.z === null) return;
-    mag = Math.abs(Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0) - 9.81);
+    return;
   }
 
-  // Push to canvas buffer
   sigBuf[sigPtr % SIG_N] = mag;
   sigPtr++;
-  sigMax = Math.max(sigMax * 0.9995, mag, activeThr() * 1.8, 0.5);
+  sigMax = Math.max(sigMax * 0.9995, mag, activeThr() * 1.8, 0.3);
 
-  // Live value display
   sigVal.textContent = mag.toFixed(2) + ' m/s²';
 
-  // Track calibration peak only during the measurement window (not prep countdown)
   if (S.calibTid !== null && calibPrepTid === null) S.calibPeak = Math.max(S.calibPeak, mag);
 
-  // Update adaptive baseline
   updateAdaptive(mag);
 
   if (S.running) detectRep(mag, Date.now());
@@ -620,11 +640,11 @@ function activeThr() {
 }
 
 function computeAutoThr() {
-  const noise = DET.noiseEMA || 0.1;
-  const peak  = DET.peakEMA  || 2.0;
+  const noise = DET.noiseEMA || 0.05;
+  const peak  = DET.peakEMA  || 1.5;
   const gap   = peak - noise;
-  if (gap < 0.25) return noise + 0.5;
-  return noise + gap * 0.38;
+  if (gap < 0.15) return noise + 0.3;   // no peaks learned yet: conservative fallback
+  return noise + gap * 0.40;
 }
 
 function updateAdaptive(mag) {
@@ -820,8 +840,13 @@ btnToggle.addEventListener('click', () => S.running ? stopSession() : startSessi
 btnReset.addEventListener('click', resetSession);
 
 async function startSession() {
-  S.running = true;
-  S.t0      = S.t0 ?? Date.now();
+  S.running   = true;
+  S.t0        = S.t0 ?? Date.now();
+  // Reset detection state so prior noise/peak estimates don't block first rep
+  DET.pkState = 'FLAT';
+  DET.pkMax   = 0;
+  DET.pkStart = 0;
+  DET.noiseEMA = 0;
   S.tid     = setInterval(updateTimer, 500);
   updateTimer();
 
@@ -1045,7 +1070,7 @@ function saveSettings() {
 function loadSettings() {
   try {
     const c    = JSON.parse(localStorage.getItem('pu_cfg') || '{}');
-    S.threshold  = c.threshold  ?? 1.5;
+    S.threshold  = c.threshold  ?? 0.6;
     S.autoThr    = c.autoThr    ?? true;
     S.cooldownMs = c.cooldownMs ?? 700;
     S.vibrate    = c.vibrate    ?? true;
