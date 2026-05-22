@@ -206,6 +206,14 @@
       width: 0;
     }
     .sig-fill.hot { background: var(--grn); }
+    .sig-peak-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: .68rem;
+      margin-top: 3px;
+    }
+    .sig-peak-lbl { color: var(--dim); }
+    #sig-peak { color: var(--acc); font-weight: 600; }
 
     /* Controls */
     .controls {
@@ -461,11 +469,15 @@
 
     <div class="sig-wrap">
       <div class="sig-hdr">
-        <span>Signal accéléromètre</span>
+        <span>Signal</span>
         <span id="sig-val">0.0 m/s²</span>
       </div>
       <div class="sig-track">
         <div class="sig-fill" id="sig-fill"></div>
+      </div>
+      <div class="sig-peak-row">
+        <span class="sig-peak-lbl">Pic récent</span>
+        <span id="sig-peak">—</span>
       </div>
     </div>
 
@@ -490,8 +502,8 @@
           <span class="row-name">Seuil de détection</span>
           <span class="row-val" id="thr-lbl">12 m/s²</span>
         </div>
-        <input type="range" id="thr-range" min="3" max="30" step="0.5" value="12">
-        <p class="row-hint">Diminuez si les reps ne sont pas détectées. Augmentez pour éviter les faux positifs.</p>
+        <input type="range" id="thr-range" min="3" max="30" step="1" value="8">
+        <p class="row-hint">Réglez au-dessus du bruit de fond mais en dessous du pic de contact. Utilisez "Pic récent" sur l'écran compteur comme référence : visez 50–70 % du pic.</p>
       </div>
 
       <div class="card-row">
@@ -499,8 +511,8 @@
           <span class="row-name">Délai anti-rebond</span>
           <span class="row-val" id="cd-lbl">1.2 s</span>
         </div>
-        <input type="range" id="cd-range" min="500" max="3000" step="100" value="1200">
-        <p class="row-hint">Délai minimum entre deux répétitions consécutives.</p>
+        <input type="range" id="cd-range" min="300" max="2000" step="100" value="700">
+        <p class="row-hint">Intervalle minimum entre deux reps. Augmentez si une pompe en compte deux.</p>
       </div>
 
       <div class="card-row">
@@ -579,14 +591,20 @@ const S = {
   count:      0,
   t0:         null,   // session start ms
   tid:        null,   // timer interval
-  cooldown:   false,
-  prevAbove:  false,  // edge detection state
-  lastMag:    0,      // for display
-  threshold:  12,     // m/s²
-  cooldownMs: 1200,
+  threshold:  8,      // m/s²  — lower default = more accessible
+  cooldownMs: 700,    // minimum ms between reps
   vibrate:    true,
   sessions:   [],
   wakeLock:   null,
+  // Detection internals (not persisted)
+  hState:     'IDLE', // 'IDLE' | 'TRIGGERED'
+  lastRepMs:  0,
+  peakVal:    0,
+  peakTid:    null,
+  // Moving-average smoothing (5 samples)
+  smBuf:      new Float32Array(5),
+  smPtr:      0,
+  smSum:      0,
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -601,6 +619,7 @@ const sessNum   = $('sess-num');
 const bestEl    = $('best');
 const sigFill   = $('sig-fill');
 const sigVal    = $('sig-val');
+const sigPeak   = $('sig-peak');
 const btnToggle = $('btn-toggle');
 const icoPlay   = $('ico-play');
 const icoStop   = $('ico-stop');
@@ -659,55 +678,78 @@ function startMotion() {
 }
 
 function onMotion(e) {
-  let mag;
+  let raw;
 
-  // Prefer acceleration (gravity-free) — cleaner signal for impact detection
   const a = e.acceleration;
   if (a && a.x !== null) {
-    mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+    raw = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
   } else {
-    // Fallback: accelerationIncludingGravity, subtract ~9.81 baseline
     const ag = e.accelerationIncludingGravity;
     if (!ag || ag.z === null) return;
-    const total = Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0);
-    mag = Math.abs(total - 9.81);
+    raw = Math.abs(Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0) - 9.81);
   }
+
+  // 5-sample moving average — kills high-frequency noise
+  S.smSum -= S.smBuf[S.smPtr];
+  S.smBuf[S.smPtr] = raw;
+  S.smSum += raw;
+  S.smPtr = (S.smPtr + 1) % S.smBuf.length;
+  const mag = S.smSum / S.smBuf.length;
 
   updateSignalBar(mag);
+  if (S.running) detectRep(mag);
+}
 
-  if (!S.running) { S.prevAbove = mag > S.threshold; return; }
+// Two-threshold hysteresis state machine.
+// Counts one rep per "mountain" in the signal:
+//   IDLE     → mag crosses threshold UP      → register rep, enter TRIGGERED
+//   TRIGGERED → mag drops below threshold/4  → back to IDLE (ready for next)
+// Absolute minimum gap (S.cooldownMs) prevents counting multiple reps on
+// a single slow oscillation even if hysteresis alone isn't enough.
+function detectRep(mag) {
+  const thr   = S.threshold;
+  const reset = thr * 0.25;
+  const now   = Date.now();
 
-  // Rising-edge detection: only count at the moment signal crosses threshold upward
-  const above = mag > S.threshold;
-  if (above && !S.prevAbove && !S.cooldown) {
-    registerRep();
+  if (S.hState === 'IDLE') {
+    if (mag > thr && (now - S.lastRepMs) > S.cooldownMs) {
+      S.hState    = 'TRIGGERED';
+      S.lastRepMs = now;
+      registerRep();
+    }
+  } else {
+    if (mag < reset) S.hState = 'IDLE';
   }
-  S.prevAbove = above;
 }
 
 function updateSignalBar(mag) {
-  S.lastMag = mag;
-  const max  = Math.max(mag, S.threshold * 2.2);  // scale bar to fit threshold
-  const pct  = Math.min(100, (mag / (S.threshold * 2.2)) * 100);
+  const scale = S.threshold * 2.5;
+  const pct   = Math.min(100, (mag / scale) * 100);
   sigFill.style.width = pct + '%';
   sigFill.classList.toggle('hot', mag > S.threshold);
   sigVal.textContent  = mag.toFixed(1) + ' m/s²';
+
+  // Track rolling 3-second peak for calibration hint
+  if (mag > S.peakVal) {
+    S.peakVal = mag;
+    sigPeak.textContent = S.peakVal.toFixed(1) + ' m/s²';
+    clearTimeout(S.peakTid);
+    S.peakTid = setTimeout(() => {
+      S.peakVal = 0;
+      sigPeak.textContent = '—';
+    }, 3000);
+  }
 }
 
 // ── Rep counting ───────────────────────────────────────────────────────────
 function registerRep() {
   S.count++;
-  S.cooldown = true;
 
-  // Update display
   countEl.textContent = S.count;
   countEl.classList.add('flash');
   setTimeout(() => countEl.classList.remove('flash'), 140);
 
-  // Haptic
   if (S.vibrate && 'vibrate' in navigator) navigator.vibrate(80);
-
-  setTimeout(() => { S.cooldown = false; }, S.cooldownMs);
 }
 
 // ── Session control ────────────────────────────────────────────────────────
@@ -751,10 +793,13 @@ function stopSession() {
 
 function resetSession() {
   if (S.running) stopSession();
-  S.count      = 0;
-  S.t0         = null;
-  S.cooldown   = false;
-  S.prevAbove  = false;
+  S.count     = 0;
+  S.t0        = null;
+  S.hState    = 'IDLE';
+  S.lastRepMs = 0;
+  S.peakVal   = 0;
+  clearTimeout(S.peakTid);
+  sigPeak.textContent = '—';
   countEl.textContent = '0';
   timerEl.textContent = '0:00';
   updateSessNum();
@@ -796,8 +841,8 @@ function saveSettings() {
 function loadSettings() {
   try {
     const c = JSON.parse(localStorage.getItem('pu_cfg') || '{}');
-    S.threshold  = c.threshold  ?? 12;
-    S.cooldownMs = c.cooldownMs ?? 1200;
+    S.threshold  = c.threshold  ?? 8;
+    S.cooldownMs = c.cooldownMs ?? 700;
     S.vibrate    = c.vibrate    ?? true;
   } catch {}
 
