@@ -315,6 +315,22 @@
       border: none;
     }
 
+    /* Calibration button */
+    .btn-calib {
+      background: var(--acc-lo);
+      border: 1px solid var(--acc);
+      color: var(--acc);
+      border-radius: 10px;
+      font-size: .88rem;
+      font-weight: 600;
+      padding: .6rem 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background .15s, transform .1s;
+    }
+    .btn-calib:active { transform: scale(.97); }
+    .btn-calib:disabled { opacity: .4; cursor: default; }
+
     /* Toggle */
     .tog { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
     .tog input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -502,8 +518,17 @@
           <span class="row-name">Seuil de détection</span>
           <span class="row-val" id="thr-lbl">12 m/s²</span>
         </div>
-        <input type="range" id="thr-range" min="3" max="30" step="1" value="8">
-        <p class="row-hint">Réglez au-dessus du bruit de fond mais en dessous du pic de contact. Utilisez "Pic récent" sur l'écran compteur comme référence : visez 50–70 % du pic.</p>
+        <input type="range" id="thr-range" min="0.2" max="10" step="0.1" value="1.5">
+        <p class="row-hint">Réglez entre le bruit de fond et le pic de contact. Consultez "Pic récent" sur l'écran compteur et visez 50–70 % de cette valeur.</p>
+      </div>
+
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Auto-calibrer</span>
+        </div>
+        <p class="row-hint" style="margin-bottom:.65rem">Appuyez, puis faites <strong>3 pompes</strong> normalement. Le seuil sera réglé automatiquement.</p>
+        <button class="btn-calib" id="btn-calib">Lancer la calibration (5 s)</button>
+        <div id="calib-status" style="font-size:.8rem;color:var(--acc);margin-top:.5rem;min-height:1.1em;"></div>
       </div>
 
       <div class="card-row">
@@ -601,10 +626,8 @@ const S = {
   lastRepMs:  0,
   peakVal:    0,
   peakTid:    null,
-  // Moving-average smoothing (5 samples)
-  smBuf:      new Float32Array(5),
-  smPtr:      0,
-  smSum:      0,
+  calibTid:   null,
+  calibPeak:  0,
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -678,23 +701,19 @@ function startMotion() {
 }
 
 function onMotion(e) {
-  let raw;
+  let mag;
 
   const a = e.acceleration;
   if (a && a.x !== null) {
-    raw = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+    mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
   } else {
     const ag = e.accelerationIncludingGravity;
     if (!ag || ag.z === null) return;
-    raw = Math.abs(Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0) - 9.81);
+    mag = Math.abs(Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0) - 9.81);
   }
 
-  // 5-sample moving average — kills high-frequency noise
-  S.smSum -= S.smBuf[S.smPtr];
-  S.smBuf[S.smPtr] = raw;
-  S.smSum += raw;
-  S.smPtr = (S.smPtr + 1) % S.smBuf.length;
-  const mag = S.smSum / S.smBuf.length;
+  // Track calibration peak when calibrating
+  if (S.calibTid !== null) S.calibPeak = Math.max(S.calibPeak, mag);
 
   updateSignalBar(mag);
   if (S.running) detectRep(mag);
@@ -841,7 +860,7 @@ function saveSettings() {
 function loadSettings() {
   try {
     const c = JSON.parse(localStorage.getItem('pu_cfg') || '{}');
-    S.threshold  = c.threshold  ?? 8;
+    S.threshold  = c.threshold  ?? 1.5;
     S.cooldownMs = c.cooldownMs ?? 700;
     S.vibrate    = c.vibrate    ?? true;
   } catch {}
@@ -851,6 +870,49 @@ function loadSettings() {
   cdRange.value        = S.cooldownMs;
   cdLbl.textContent    = `${(S.cooldownMs / 1000).toFixed(1)} s`;
   vibTog.checked       = S.vibrate;
+}
+
+// ── Auto-calibration ───────────────────────────────────────────────────────
+const btnCalib    = $('btn-calib');
+const calibStatus = $('calib-status');
+const CALIB_MS    = 5000;
+
+btnCalib.addEventListener('click', startCalibration);
+
+function startCalibration() {
+  if (S.calibTid !== null) return;
+  S.calibPeak = 0;
+  btnCalib.disabled = true;
+
+  let remaining = Math.ceil(CALIB_MS / 1000);
+  calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
+
+  const countdownId = setInterval(() => {
+    remaining--;
+    if (remaining > 0) {
+      calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
+    }
+  }, 1000);
+
+  S.calibTid = setTimeout(() => {
+    clearInterval(countdownId);
+    S.calibTid = null;
+    btnCalib.disabled = false;
+
+    if (S.calibPeak < 0.1) {
+      calibStatus.textContent = 'Signal trop faible — refaites en appuyant plus fort.';
+      return;
+    }
+    // Set threshold to 55 % of peak, rounded to 1 decimal
+    const suggested = Math.round(S.calibPeak * 0.55 * 10) / 10;
+    S.threshold         = suggested;
+    thrRange.value      = suggested;
+    thrLbl.textContent  = `${suggested} m/s²`;
+    saveSettings();
+    calibStatus.textContent =
+      `✓ Pic mesuré : ${S.calibPeak.toFixed(2)} m/s² → seuil réglé à ${suggested} m/s²`;
+    toast(`Seuil auto-réglé : ${suggested} m/s²`);
+  }, CALIB_MS);
 }
 
 // ── History ────────────────────────────────────────────────────────────────
