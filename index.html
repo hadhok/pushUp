@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Push-Up">
+  <title>Push-Up</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg:     #0d0d0d;
+      --bg2:    #1a1a1a;
+      --bg3:    #252525;
+      --acc:    #ff6b35;
+      --acc-lo: rgba(255,107,53,.18);
+      --txt:    #f0f0f0;
+      --mid:    #999;
+      --dim:    #555;
+      --grn:    #4ade80;
+      --red:    #f87171;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--txt);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    /* ── Permission overlay ─────────────────────────────── */
+    #perm {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 99;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 2rem;
+      gap: 1.4rem;
+      text-align: center;
+    }
+
+    #perm .big-icon { font-size: 4rem; }
+    #perm h1 { font-size: 1.35rem; font-weight: 700; }
+    #perm p  { color: var(--mid); line-height: 1.65; font-size: 0.93rem; max-width: 300px; }
+
+    .btn-cta {
+      background: var(--acc);
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 0.9rem 2.5rem;
+      cursor: pointer;
+      transition: transform .1s, opacity .15s;
+      margin-top: 0.5rem;
+    }
+    .btn-cta:active { transform: scale(.94); opacity: .85; }
+
+    /* ── App shell ──────────────────────────────────────── */
+    #app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── Screens ────────────────────────────────────────── */
+    .screen {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: none;
+      flex-direction: column;
+      -webkit-overflow-scrolling: touch;
+    }
+    .screen.active { display: flex; }
+
+    /* ── Counter screen ─────────────────────────────────── */
+    #s-counter {
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.5rem 1.5rem 1.25rem;
+      min-height: 0;
+    }
+
+    .top-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      min-width: 52px;
+    }
+    .chip .lbl {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--dim);
+    }
+    .chip .val {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .live-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--dim);
+      transition: background .3s, box-shadow .3s;
+    }
+    .live-dot.on {
+      background: var(--grn);
+      box-shadow: 0 0 10px var(--grn);
+      animation: blink 1.3s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* Giant counter */
+    .count-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #count {
+      font-size: clamp(90px, 36vw, 210px);
+      font-weight: 900;
+      line-height: .9;
+      letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums;
+      color: var(--txt);
+      transition: transform .08s ease-out, color .08s;
+      user-select: none;
+    }
+    #count.flash {
+      transform: scale(1.08);
+      color: var(--acc);
+    }
+
+    .count-sub {
+      margin-top: .55rem;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .2em;
+      color: var(--dim);
+    }
+
+    #timer {
+      margin-top: .45rem;
+      font-size: 2rem;
+      font-weight: 300;
+      letter-spacing: .06em;
+      font-variant-numeric: tabular-nums;
+      color: var(--mid);
+    }
+
+    /* Signal bar */
+    .sig-wrap {
+      width: 88%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .sig-hdr {
+      display: flex;
+      justify-content: space-between;
+      font-size: .68rem;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+    .sig-track {
+      height: 3px;
+      background: var(--bg3);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+    .sig-fill {
+      height: 100%;
+      background: var(--acc);
+      border-radius: 2px;
+      transition: width .05s linear;
+      width: 0;
+    }
+    .sig-fill.hot { background: var(--grn); }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .7rem;
+    }
+
+    #btn-toggle {
+      width: 78px; height: 78px;
+      border-radius: 50%;
+      border: 2.5px solid var(--acc);
+      background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: background .2s, box-shadow .2s, transform .1s;
+      position: relative;
+    }
+    #btn-toggle.on {
+      background: var(--acc);
+      box-shadow: 0 0 28px var(--acc-lo);
+    }
+    #btn-toggle:active { transform: scale(.9); }
+    #btn-toggle svg { width: 30px; height: 30px; fill: var(--acc); }
+    #btn-toggle.on svg { fill: #fff; }
+
+    #btn-reset {
+      background: none;
+      border: none;
+      font-size: .82rem;
+      color: var(--dim);
+      cursor: pointer;
+      padding: .4rem 1rem;
+      border-radius: 20px;
+      transition: color .2s;
+    }
+    #btn-reset:active { color: var(--txt); }
+
+    /* ── Settings screen ─────────────────────────────────── */
+    #s-settings {
+      padding: 1.5rem;
+      gap: 1.2rem;
+    }
+
+    .scr-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .card {
+      background: var(--bg2);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .card-row {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--bg3);
+    }
+    .card-row:last-child { border-bottom: none; }
+
+    .row-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: .55rem;
+    }
+    .row-name { font-size: .95rem; font-weight: 500; }
+    .row-val  { font-size: .9rem; font-weight: 600; color: var(--acc); }
+    .row-hint {
+      font-size: .78rem;
+      color: var(--dim);
+      line-height: 1.55;
+      margin-top: .45rem;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      background: var(--bg3);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--acc);
+      box-shadow: 0 0 0 4px var(--acc-lo);
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--acc);
+      border: none;
+    }
+
+    /* Toggle */
+    .tog { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+    .tog input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .tog-track {
+      position: absolute; inset: 0;
+      background: var(--bg3);
+      border-radius: 13px;
+      transition: background .2s;
+      cursor: pointer;
+    }
+    .tog-thumb {
+      position: absolute;
+      left: 3px; top: 3px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform .2s;
+      pointer-events: none;
+    }
+    .tog input:checked ~ .tog-track { background: var(--acc); }
+    .tog input:checked ~ .tog-thumb { transform: translateX(20px); }
+
+    /* ── History screen ──────────────────────────────────── */
+    #s-history {
+      padding: 1.5rem;
+      gap: 1rem;
+    }
+
+    .hist-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-danger {
+      background: none; border: none;
+      font-size: .82rem;
+      color: var(--red);
+      cursor: pointer; padding: .25rem .5rem;
+    }
+
+    .sess-list {
+      display: flex; flex-direction: column; gap: .65rem;
+      padding-bottom: 1rem;
+    }
+
+    .sess-card {
+      background: var(--bg2);
+      border-radius: 14px;
+      padding: .9rem 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .sess-date { font-size: .78rem; color: var(--mid); margin-bottom: 3px; }
+    .sess-meta { font-size: .76rem; color: var(--dim); }
+    .sess-reps {
+      font-size: 2rem; font-weight: 800;
+      color: var(--acc);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    .empty {
+      text-align: center; padding: 3.5rem 0;
+      color: var(--dim); font-size: .9rem;
+    }
+
+    /* ── Bottom nav ──────────────────────────────────────── */
+    nav {
+      display: flex;
+      background: var(--bg2);
+      border-top: 1px solid var(--bg3);
+      padding-bottom: max(env(safe-area-inset-bottom), 4px);
+      flex-shrink: 0;
+    }
+
+    .nav-btn {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      padding: 10px 0 6px;
+      background: none; border: none;
+      color: var(--dim);
+      font-size: .6rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      cursor: pointer;
+      transition: color .15s;
+    }
+    .nav-btn svg { width: 22px; height: 22px; fill: currentColor; }
+    .nav-btn.active { color: var(--acc); }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: calc(64px + max(env(safe-area-inset-bottom), 4px) + 10px);
+      left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: var(--bg3);
+      color: var(--txt);
+      border-radius: 50px;
+      padding: .6rem 1.4rem;
+      font-size: .88rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .25s, transform .25s;
+      z-index: 50;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ── Permission screen ─────────────────────────────────────────── -->
+<div id="perm">
+  <div class="big-icon">📱</div>
+  <h1>Accès au mouvement requis</h1>
+  <p>
+    Cette app utilise l'accéléromètre pour compter vos pompes.<br><br>
+    Posez le téléphone <strong>à plat, écran vers le haut</strong>, sous votre poitrine. Chaque fois que votre poitrine touche l'écran, une répétition est comptée.
+  </p>
+  <button class="btn-cta" id="perm-btn">Autoriser l'accès</button>
+</div>
+
+<!-- ── App ───────────────────────────────────────────────────────── -->
+<div id="app" class="hidden">
+
+  <!-- Counter -->
+  <section id="s-counter" class="screen active">
+
+    <div class="top-bar">
+      <div class="chip">
+        <span class="lbl">Session</span>
+        <span class="val" id="sess-num">#1</span>
+      </div>
+      <div class="live-dot" id="live-dot"></div>
+      <div class="chip">
+        <span class="lbl">Record</span>
+        <span class="val" id="best">0</span>
+      </div>
+    </div>
+
+    <div class="count-wrap">
+      <div id="count">0</div>
+      <div class="count-sub">répétitions</div>
+      <div id="timer">0:00</div>
+    </div>
+
+    <div class="sig-wrap">
+      <div class="sig-hdr">
+        <span>Signal accéléromètre</span>
+        <span id="sig-val">0.0 m/s²</span>
+      </div>
+      <div class="sig-track">
+        <div class="sig-fill" id="sig-fill"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="btn-toggle" aria-label="Démarrer / Arrêter">
+        <svg id="ico-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="ico-stop" viewBox="0 0 24 24" class="hidden"><path d="M6 6h12v12H6z"/></svg>
+      </button>
+      <button id="btn-reset">Réinitialiser</button>
+    </div>
+
+  </section>
+
+  <!-- Settings -->
+  <section id="s-settings" class="screen">
+
+    <div class="scr-title">Réglages</div>
+
+    <div class="card">
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Seuil de détection</span>
+          <span class="row-val" id="thr-lbl">12 m/s²</span>
+        </div>
+        <input type="range" id="thr-range" min="3" max="30" step="0.5" value="12">
+        <p class="row-hint">Diminuez si les reps ne sont pas détectées. Augmentez pour éviter les faux positifs.</p>
+      </div>
+
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Délai anti-rebond</span>
+          <span class="row-val" id="cd-lbl">1.2 s</span>
+        </div>
+        <input type="range" id="cd-range" min="500" max="3000" step="100" value="1200">
+        <p class="row-hint">Délai minimum entre deux répétitions consécutives.</p>
+      </div>
+
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Vibration</span>
+          <label class="tog">
+            <input type="checkbox" id="vib-tog" checked>
+            <div class="tog-track"></div>
+            <div class="tog-thumb"></div>
+          </label>
+        </div>
+        <p class="row-hint">Retour haptique à chaque répétition comptée.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-row">
+        <span class="row-name">Comment utiliser</span>
+        <p class="row-hint" style="margin-top:.5rem">
+          1. Posez le téléphone <strong>à plat, écran vers le haut</strong>, sur le sol, sous votre poitrine.<br><br>
+          2. Appuyez sur ▶ pour démarrer la session.<br><br>
+          3. Effectuez vos pompes normalement. Chaque fois que votre poitrine touche ou effleure l'écran, une répétition est comptée et le téléphone vibre.<br><br>
+          4. Appuyez sur ■ pour arrêter — la session est automatiquement sauvegardée.
+        </p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- History -->
+  <section id="s-history" class="screen">
+
+    <div class="hist-hdr">
+      <div class="scr-title">Historique</div>
+      <button class="btn-danger" id="btn-clear">Tout effacer</button>
+    </div>
+
+    <div class="sess-list" id="sess-list">
+      <p class="empty">Aucune session enregistrée</p>
+    </div>
+
+  </section>
+
+  <!-- Bottom nav -->
+  <nav>
+    <button class="nav-btn active" data-target="s-counter">
+      <svg viewBox="0 0 24 24">
+        <path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.81 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.82 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5V2.05z"/>
+      </svg>
+      Compteur
+    </button>
+    <button class="nav-btn" data-target="s-settings">
+      <svg viewBox="0 0 24 24">
+        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.22-.07.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+      </svg>
+      Réglages
+    </button>
+    <button class="nav-btn" data-target="s-history">
+      <svg viewBox="0 0 24 24">
+        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21L13 13.15V8h-1z"/>
+      </svg>
+      Historique
+    </button>
+  </nav>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────
+const S = {
+  running:    false,
+  count:      0,
+  t0:         null,   // session start ms
+  tid:        null,   // timer interval
+  cooldown:   false,
+  prevAbove:  false,  // edge detection state
+  lastMag:    0,      // for display
+  threshold:  12,     // m/s²
+  cooldownMs: 1200,
+  vibrate:    true,
+  sessions:   [],
+  wakeLock:   null,
+};
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const permEl    = $('perm');
+const permBtn   = $('perm-btn');
+const appEl     = $('app');
+const countEl   = $('count');
+const timerEl   = $('timer');
+const liveDot   = $('live-dot');
+const sessNum   = $('sess-num');
+const bestEl    = $('best');
+const sigFill   = $('sig-fill');
+const sigVal    = $('sig-val');
+const btnToggle = $('btn-toggle');
+const icoPlay   = $('ico-play');
+const icoStop   = $('ico-stop');
+const btnReset  = $('btn-reset');
+const thrRange  = $('thr-range');
+const thrLbl    = $('thr-lbl');
+const cdRange   = $('cd-range');
+const cdLbl     = $('cd-lbl');
+const vibTog    = $('vib-tog');
+const sessList  = $('sess-list');
+const btnClear  = $('btn-clear');
+const toastEl   = $('toast');
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+function boot() {
+  loadSettings();
+  loadHistory();
+
+  if (typeof DeviceMotionEvent === 'undefined') {
+    permEl.querySelector('h1').textContent = 'Non supporté';
+    permEl.querySelector('p').textContent =
+      'Votre navigateur ne supporte pas DeviceMotionEvent. Essayez Safari sur iOS ou Chrome sur Android.';
+    permBtn.textContent = 'Continuer sans détection';
+    permBtn.addEventListener('click', showApp);
+    return;
+  }
+
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
+    // iOS 13+: must request from user gesture
+    permBtn.addEventListener('click', async () => {
+      try {
+        const res = await DeviceMotionEvent.requestPermission();
+        if (res === 'granted') { startMotion(); showApp(); }
+        else { toast('Permission refusée — activez dans Réglages > Safari'); }
+      } catch (e) {
+        // Already granted or unexpected error
+        startMotion();
+        showApp();
+      }
+    });
+  } else {
+    // Android / desktop — no permission needed
+    startMotion();
+    showApp();
+  }
+}
+
+function showApp() {
+  permEl.classList.add('hidden');
+  appEl.classList.remove('hidden');
+}
+
+// ── Motion detection ───────────────────────────────────────────────────────
+function startMotion() {
+  window.addEventListener('devicemotion', onMotion, { passive: true });
+}
+
+function onMotion(e) {
+  let mag;
+
+  // Prefer acceleration (gravity-free) — cleaner signal for impact detection
+  const a = e.acceleration;
+  if (a && a.x !== null) {
+    mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  } else {
+    // Fallback: accelerationIncludingGravity, subtract ~9.81 baseline
+    const ag = e.accelerationIncludingGravity;
+    if (!ag || ag.z === null) return;
+    const total = Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0);
+    mag = Math.abs(total - 9.81);
+  }
+
+  updateSignalBar(mag);
+
+  if (!S.running) { S.prevAbove = mag > S.threshold; return; }
+
+  // Rising-edge detection: only count at the moment signal crosses threshold upward
+  const above = mag > S.threshold;
+  if (above && !S.prevAbove && !S.cooldown) {
+    registerRep();
+  }
+  S.prevAbove = above;
+}
+
+function updateSignalBar(mag) {
+  S.lastMag = mag;
+  const max  = Math.max(mag, S.threshold * 2.2);  // scale bar to fit threshold
+  const pct  = Math.min(100, (mag / (S.threshold * 2.2)) * 100);
+  sigFill.style.width = pct + '%';
+  sigFill.classList.toggle('hot', mag > S.threshold);
+  sigVal.textContent  = mag.toFixed(1) + ' m/s²';
+}
+
+// ── Rep counting ───────────────────────────────────────────────────────────
+function registerRep() {
+  S.count++;
+  S.cooldown = true;
+
+  // Update display
+  countEl.textContent = S.count;
+  countEl.classList.add('flash');
+  setTimeout(() => countEl.classList.remove('flash'), 140);
+
+  // Haptic
+  if (S.vibrate && 'vibrate' in navigator) navigator.vibrate(80);
+
+  setTimeout(() => { S.cooldown = false; }, S.cooldownMs);
+}
+
+// ── Session control ────────────────────────────────────────────────────────
+btnToggle.addEventListener('click', () => S.running ? stopSession() : startSession());
+btnReset.addEventListener('click', resetSession);
+
+async function startSession() {
+  S.running = true;
+  S.t0 = S.t0 ?? Date.now();
+  S.tid = setInterval(updateTimer, 500);
+  updateTimer();
+
+  btnToggle.classList.add('on');
+  icoPlay.classList.add('hidden');
+  icoStop.classList.remove('hidden');
+  liveDot.classList.add('on');
+
+  // Request wake lock to keep screen on
+  if ('wakeLock' in navigator) {
+    try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+}
+
+function stopSession() {
+  S.running = false;
+  clearInterval(S.tid);
+  S.tid = null;
+
+  btnToggle.classList.remove('on');
+  icoPlay.classList.remove('hidden');
+  icoStop.classList.add('hidden');
+  liveDot.classList.remove('on');
+
+  if (S.wakeLock) { S.wakeLock.release(); S.wakeLock = null; }
+
+  if (S.count > 0) {
+    saveSession();
+    toast(`✓ ${S.count} répétitions sauvegardées`);
+  }
+}
+
+function resetSession() {
+  if (S.running) stopSession();
+  S.count      = 0;
+  S.t0         = null;
+  S.cooldown   = false;
+  S.prevAbove  = false;
+  countEl.textContent = '0';
+  timerEl.textContent = '0:00';
+  updateSessNum();
+}
+
+function updateTimer() {
+  if (!S.t0) return;
+  const sec = Math.floor((Date.now() - S.t0) / 1000);
+  timerEl.textContent =
+    `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+thrRange.addEventListener('input', () => {
+  S.threshold = +thrRange.value;
+  thrLbl.textContent = `${S.threshold} m/s²`;
+  saveSettings();
+});
+
+cdRange.addEventListener('input', () => {
+  S.cooldownMs = +cdRange.value;
+  cdLbl.textContent = `${(S.cooldownMs / 1000).toFixed(1)} s`;
+  saveSettings();
+});
+
+vibTog.addEventListener('change', () => {
+  S.vibrate = vibTog.checked;
+  saveSettings();
+});
+
+function saveSettings() {
+  localStorage.setItem('pu_cfg', JSON.stringify({
+    threshold:  S.threshold,
+    cooldownMs: S.cooldownMs,
+    vibrate:    S.vibrate,
+  }));
+}
+
+function loadSettings() {
+  try {
+    const c = JSON.parse(localStorage.getItem('pu_cfg') || '{}');
+    S.threshold  = c.threshold  ?? 12;
+    S.cooldownMs = c.cooldownMs ?? 1200;
+    S.vibrate    = c.vibrate    ?? true;
+  } catch {}
+
+  thrRange.value       = S.threshold;
+  thrLbl.textContent   = `${S.threshold} m/s²`;
+  cdRange.value        = S.cooldownMs;
+  cdLbl.textContent    = `${(S.cooldownMs / 1000).toFixed(1)} s`;
+  vibTog.checked       = S.vibrate;
+}
+
+// ── History ────────────────────────────────────────────────────────────────
+function saveSession() {
+  const duration = S.t0 ? Math.floor((Date.now() - S.t0) / 1000) : 0;
+  S.sessions.unshift({
+    id:       Date.now(),
+    count:    S.count,
+    duration,
+    date:     new Date().toISOString(),
+  });
+  if (S.sessions.length > 60) S.sessions.length = 60;
+  persist();
+  renderHistory();
+  updateBest();
+  updateSessNum();
+}
+
+function loadHistory() {
+  try { S.sessions = JSON.parse(localStorage.getItem('pu_hist') || '[]'); }
+  catch { S.sessions = []; }
+  renderHistory();
+  updateBest();
+  updateSessNum();
+}
+
+function persist() {
+  localStorage.setItem('pu_hist', JSON.stringify(S.sessions));
+}
+
+function renderHistory() {
+  if (!S.sessions.length) {
+    sessList.innerHTML = '<p class="empty">Aucune session enregistrée</p>';
+    return;
+  }
+
+  sessList.innerHTML = S.sessions.map(s => {
+    const d       = new Date(s.date);
+    const dateStr = d.toLocaleDateString('fr-FR', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+    const m   = Math.floor(s.duration / 60);
+    const sec = s.duration % 60;
+    const dur = `${m}:${String(sec).padStart(2,'0')}`;
+    const rpm = s.duration > 5
+      ? ` · ${(s.count / (s.duration / 60)).toFixed(1)} /min`
+      : '';
+    return `
+      <div class="sess-card">
+        <div>
+          <div class="sess-date">${dateStr}</div>
+          <div class="sess-meta">${dur}${rpm}</div>
+        </div>
+        <div class="sess-reps">${s.count}</div>
+      </div>`;
+  }).join('');
+}
+
+function updateBest() {
+  bestEl.textContent = S.sessions.reduce((m, s) => Math.max(m, s.count), 0);
+}
+
+function updateSessNum() {
+  sessNum.textContent = `#${S.sessions.length + 1}`;
+}
+
+btnClear.addEventListener('click', () => {
+  if (!S.sessions.length) return;
+  S.sessions = [];
+  persist();
+  renderHistory();
+  updateBest();
+  updateSessNum();
+  toast('Historique effacé');
+});
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.target;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    $(id).classList.add('active');
+    btn.classList.add('active');
+  });
+});
+
+// Re-acquire wake lock if page becomes visible again
+document.addEventListener('visibilitychange', async () => {
+  if (S.running && S.wakeLock === null && document.visibilityState === 'visible') {
+    try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTid;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTid);
+  toastTid = setTimeout(() => toastEl.classList.remove('show'), 2600);
+}
+
+// ── Go ─────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
