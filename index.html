@@ -244,6 +244,103 @@
     .nav-btn svg { width: 22px; height: 22px; fill: currentColor; }
     .nav-btn.active { color: var(--acc); }
 
+    /* ── Countdown ──────────────────────────────────────────── */
+    @keyframes cdpop {
+      0%   { transform: scale(2.4); opacity: 0; }
+      28%  { transform: scale(1);   opacity: 1; }
+      78%  { transform: scale(1);   opacity: 1; }
+      100% { transform: scale(.55); opacity: 0; }
+    }
+    #cd-overlay {
+      position: fixed; inset: 0; z-index: 88;
+      background: rgba(13,13,13,.97);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: .9rem;
+    }
+    #cd-sub {
+      font-size: .78rem; text-transform: uppercase; letter-spacing: .14em;
+      color: var(--dim); min-height: 1.2em;
+    }
+    #cd-num {
+      font-size: 44vw; font-weight: 900; line-height: 1;
+      color: var(--acc); user-select: none; pointer-events: none;
+    }
+    #cd-num.go { color: var(--grn); font-size: 18vw; letter-spacing: -.02em; }
+
+    /* ── Progress ring ───────────────────────────────────────── */
+    .count-ring-wrap {
+      position: relative;
+      width:  calc(clamp(90px, 36vw, 210px) + 52px);
+      height: calc(clamp(90px, 36vw, 210px) + 52px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .prog-ring-svg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      transform: rotate(-90deg); pointer-events: none;
+    }
+    .ring-bg   { fill: none; stroke: var(--bg3); stroke-width: 3; }
+    .ring-fill {
+      fill: none; stroke: var(--acc); stroke-width: 3; stroke-linecap: round;
+      stroke-dasharray: 289; stroke-dashoffset: 289;
+      transition: stroke-dashoffset .38s cubic-bezier(.4,0,.2,1), stroke .3s;
+    }
+    .ring-fill.reached { stroke: var(--grn); }
+
+    /* ── Programme screen ────────────────────────────────────── */
+    #s-program { padding: 1.5rem; gap: 1.1rem; }
+    .prog-hero {
+      background: linear-gradient(135deg, var(--acc-lo) 0%, rgba(74,222,128,.1) 100%);
+      border: 1px solid rgba(255,107,53,.4); border-radius: 18px;
+      padding: 1.3rem 1.4rem; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: .65rem;
+    }
+    .prog-hero-top { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--acc); }
+    .prog-hero-row { display: flex; align-items: baseline; gap: .4rem; }
+    .prog-hero-num {
+      font-size: clamp(52px, 17vw, 80px); font-weight: 900; line-height: 1;
+      color: var(--txt); font-variant-numeric: tabular-nums;
+    }
+    .prog-hero-unit { font-size: .95rem; color: var(--mid); }
+    .prog-hero-tip  { font-size: .8rem; color: var(--mid); line-height: 1.5; }
+    .btn-prog-go {
+      background: var(--acc); color: #fff; border: none; border-radius: 50px;
+      font-size: .95rem; font-weight: 700; padding: .72rem 1.8rem;
+      cursor: pointer; align-self: flex-start;
+      transition: transform .1s, opacity .15s;
+    }
+    .btn-prog-go:active { transform: scale(.92); opacity: .8; }
+    .prog-badge {
+      background: var(--grn-lo); border: 1px solid var(--grn); color: var(--grn);
+      border-radius: 50px; font-size: .8rem; font-weight: 600;
+      padding: .35rem .9rem; align-self: flex-start;
+    }
+    .prog-week-block { flex-shrink: 0; }
+    .prog-week-hdr {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 .15rem; margin-bottom: .5rem;
+    }
+    .prog-week-title { font-size: .83rem; font-weight: 600; }
+    .prog-week-tag   { font-size: .7rem; color: var(--dim); }
+    .prog-sess-row   { display: flex; gap: .5rem; }
+    .prog-s {
+      flex: 1; border-radius: 9px; padding: .5rem .2rem;
+      text-align: center; font-size: .82rem; font-weight: 700;
+      border: 1px solid var(--bg3); background: var(--bg3); color: var(--dim);
+      position: relative; min-width: 0;
+    }
+    .prog-s.done   { background: var(--grn-lo); border-color: var(--grn); color: var(--grn); }
+    .prog-s.active {
+      background: var(--acc-lo); border-color: var(--acc); color: var(--acc);
+      box-shadow: 0 0 14px rgba(255,107,53,.28);
+    }
+    .prog-s.done::after { content: '✓'; position: absolute; top: 2px; right: 4px; font-size: .55rem; }
+    .prog-done-card {
+      background: var(--grn-lo); border: 1px solid var(--grn); border-radius: 16px;
+      padding: 2rem 1.5rem; text-align: center; flex-shrink: 0;
+    }
+    .prog-done-card h2 { font-size: 1.45rem; font-weight: 900; color: var(--grn); margin-bottom: .4rem; }
+    .prog-done-card p  { font-size: .88rem; color: var(--mid); }
+
     /* ── Toast ───────────────────────────────────────────── */
     #toast {
       position: fixed;
@@ -257,6 +354,12 @@
   </style>
 </head>
 <body>
+
+<!-- ── Countdown overlay ───────────────────────────────────── -->
+<div id="cd-overlay" class="hidden">
+  <div id="cd-sub">Préparez-vous</div>
+  <div id="cd-num">3</div>
+</div>
 
 <!-- ── Permission ──────────────────────────────────────────── -->
 <div id="perm">
@@ -289,7 +392,13 @@
     </div>
 
     <div class="count-wrap">
-      <div id="count">0</div>
+      <div class="count-ring-wrap">
+        <svg class="prog-ring-svg" viewBox="0 0 100 100">
+          <circle class="ring-bg"   cx="50" cy="50" r="46"/>
+          <circle class="ring-fill" id="ring-fill" cx="50" cy="50" r="46"/>
+        </svg>
+        <div id="count">0</div>
+      </div>
       <div class="count-sub">répétitions</div>
       <div id="timer">0:00</div>
     </div>
@@ -442,6 +551,12 @@
 
   </section>
 
+  <!-- Programme -->
+  <section id="s-program" class="screen">
+    <div class="scr-title">Programme 100</div>
+    <div id="prog-content"></div>
+  </section>
+
   <!-- Nav -->
   <nav>
     <button class="nav-btn active" data-target="s-counter">
@@ -456,6 +571,10 @@
       <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21L13 13.15V8h-1z"/></svg>
       Historique
     </button>
+    <button class="nav-btn" data-target="s-program">
+      <svg viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.86 2 3.38 3.61 3.94V19H7v2h10v-2h-4v-2.12c1.63-.32 2.98-1.64 3.61-3.06C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
+      Plan 100
+    </button>
   </nav>
 
 </div>
@@ -467,7 +586,22 @@
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const LEVEL_GOALS = { debutant: 20, intermediaire: 40, confirme: 60, expert: 100 };
-const SIG_N       = 80;   // canvas sparkline history length
+const SIG_N       = 80;
+
+// ── Training programme (8 weeks → 100 push-ups) ────────────────────────────
+const PROGRAM = [
+  { week:1, label:'Fondations',  targets:[15, 20, 25]  },
+  { week:2, label:'Régularité',  targets:[28, 32, 36]  },
+  { week:3, label:'Progression', targets:[38, 42, 46]  },
+  { week:4, label:'Force',       targets:[48, 52, 56]  },
+  { week:5, label:'Endurance',   targets:[58, 62, 66]  },
+  { week:6, label:'Intensité',   targets:[68, 73, 78]  },
+  { week:7, label:'Puissance',   targets:[80, 86, 92]  },
+  { week:8, label:'Défi final',  targets:[90, 95, 100] },
+];
+const PROG_SESSIONS = PROGRAM.flatMap(w =>
+  w.targets.map(t => ({ week: w.week, label: w.label, target: t }))
+);
 
 // ── State ──────────────────────────────────────────────────────────────────
 const S = {
@@ -483,8 +617,11 @@ const S = {
   autoThr:    true,
   cooldownMs: 700,
   vibrate:    true,
-  voiceOn:    false,
+  voiceOn:    true,
   level:      'intermediaire',
+  // Programme
+  progIdx:    0,
+  progDone:   false,
   // Calibration
   calibTid:   null,
   calibPeak:  0,
@@ -498,7 +635,7 @@ const DET = {
   pkMax:    0,
   pkStart:  0,
   noiseEMA: 0,
-  peakEMA:  1.5,      // initial expected peak (impact-delta signal is smaller than raw)
+  peakEMA:  0.4,      // low initial → auto threshold starts at ~0.20 m/s² (avoids bootstrap deadlock)
 };
 
 // ── Baseline tracker for gravity-inclusive signal ──────────────────────────
@@ -543,12 +680,18 @@ const goalLbl     = $('goal-lbl');
 const sessList    = $('sess-list');
 const btnClear    = $('btn-clear');
 const toastEl     = $('toast');
+const cdOverlay   = $('cd-overlay');
+const cdNum       = $('cd-num');
+const cdSub       = $('cd-sub');
+const ringFill    = $('ring-fill');
+const progContent = $('prog-content');
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 function boot() {
   loadSettings();
   loadHistory();
   initCanvas();
+  renderProgram();
 
   if (typeof DeviceMotionEvent === 'undefined') {
     permEl.querySelector('h1').textContent = 'Non supporté';
@@ -578,32 +721,55 @@ function showApp() {
   startCanvas();
 }
 
+// ── Countdown ─────────────────────────────────────────────────────────────
+function runCountdown(cb) {
+  cdOverlay.classList.remove('hidden');
+  const steps = [
+    { text: '3', sub: 'Préparez-vous', go: false },
+    { text: '2', sub: 'Préparez-vous', go: false },
+    { text: '1', sub: 'Prêt ?',        go: false },
+    { text: 'Go !', sub: '',           go: true  },
+  ];
+  let i = 0;
+  function step() {
+    const { text, sub, go } = steps[i];
+    cdNum.classList.toggle('go', go);
+    cdNum.textContent = text;
+    cdSub.textContent = sub;
+    cdNum.style.animation = 'none';
+    cdNum.getBoundingClientRect(); // force reflow to restart animation
+    cdNum.style.animation = 'cdpop .85s ease-out forwards';
+    speak(go ? 'Partez' : text);
+    if (go) {
+      setTimeout(() => { cdOverlay.classList.add('hidden'); cb(); }, 700);
+    } else {
+      i++;
+      setTimeout(step, 900);
+    }
+  }
+  step();
+}
+
 // ── Motion ─────────────────────────────────────────────────────────────────
 function startMotion() {
   window.addEventListener('devicemotion', onMotion, { passive: true });
 }
 
 function onMotion(e) {
-  let mag;
   const a  = e.acceleration;
   const ag = e.accelerationIncludingGravity;
 
-  // Check if gravity-free acceleration is usable (non-null and non-zero).
-  // Some iOS devices return {x:0, y:0, z:0} which is indistinguishable from
-  // true rest — so we also try the baseline-delta path when gf is all-zero.
-  const gfSum = a ? Math.abs(a.x||0) + Math.abs(a.y||0) + Math.abs(a.z||0) : 0;
-  const gfOk  = a && a.z !== null && gfSum > 0.02;
+  // ── Path A: gravity-free (Android, some iOS) ──────────────────────────
+  let magGF = 0;
+  if (a && a.z !== null) {
+    magGF = Math.abs(a.z || 0) + 0.15 * (Math.abs(a.x || 0) + Math.abs(a.y || 0));
+  }
 
-  if (gfOk) {
-    // Gravity-free path (Android, some iOS): z is the impact axis when flat
-    const az = Math.abs(a.z || 0);
-    const ax = Math.abs(a.x || 0);
-    const ay = Math.abs(a.y || 0);
-    mag = az + (ax + ay) * 0.15;
-  } else if (ag && ag.z !== null) {
-    // Gravity-inclusive path (most iOS): subtract slow baseline to get dynamic part.
-    // Baseline tracks resting orientation slowly (~6 s time constant) so it
-    // doesn't follow brief impacts but does follow tilt changes.
+  // ── Path B: gravity-inclusive baseline-delta (always available) ────────
+  // Slow EMA (~6 s at 50 Hz) tracks resting value; subtracting it isolates
+  // brief impact impulses without removing the DC gravity component.
+  let magAG = 0;
+  if (ag && ag.z !== null) {
     const rawX = ag.x || 0, rawY = ag.y || 0, rawZ = ag.z || 0;
     if (BASE.z === null) {
       BASE.x = rawX; BASE.y = rawY; BASE.z = rawZ;
@@ -615,11 +781,12 @@ function onMotion(e) {
     const dz = rawZ - BASE.z;
     const dx = rawX - BASE.x;
     const dy = rawY - BASE.y;
-    // Weight z heavily (main impact direction when phone is flat)
-    mag = Math.abs(dz) + 0.15 * Math.sqrt(dx * dx + dy * dy);
-  } else {
-    return;
+    magAG = Math.abs(dz) + 0.15 * Math.sqrt(dx * dx + dy * dy);
   }
+
+  // Take the stronger signal — whichever path the device supports, it wins
+  const mag = Math.max(magGF, magAG);
+  if (mag < 0.001) return;
 
   sigBuf[sigPtr % SIG_N] = mag;
   sigPtr++;
@@ -640,11 +807,11 @@ function activeThr() {
 }
 
 function computeAutoThr() {
-  const noise = DET.noiseEMA || 0.05;
-  const peak  = DET.peakEMA  || 1.5;
+  const noise = DET.noiseEMA || 0.03;
+  const peak  = DET.peakEMA  || 0.4;
   const gap   = peak - noise;
-  if (gap < 0.15) return noise + 0.3;   // no peaks learned yet: conservative fallback
-  return noise + gap * 0.40;
+  if (gap < 0.08) return noise + 0.10;   // fallback: low, so first reps can bootstrap the EMA
+  return noise + gap * 0.45;
 }
 
 function updateAdaptive(mag) {
@@ -800,6 +967,16 @@ function renderCanvas() {
   ctx.stroke();
 }
 
+// ── Progress ring ──────────────────────────────────────────────────────────
+function updateRing() {
+  const CIRC   = 289; // 2π × 46
+  const cur    = !S.progDone ? PROG_SESSIONS[S.progIdx] : null;
+  const target = cur ? cur.target : LEVEL_GOALS[S.level];
+  const pct    = Math.min(1, S.count / target);
+  ringFill.style.strokeDashoffset = (CIRC * (1 - pct)).toFixed(2);
+  ringFill.classList.toggle('reached', pct >= 1);
+}
+
 // ── Rep counting ───────────────────────────────────────────────────────────
 function registerRep() {
   S.count++;
@@ -810,6 +987,7 @@ function registerRep() {
   if (S.vibrate && 'vibrate' in navigator) navigator.vibrate(80);
 
   voiceOnRep(S.count);
+  updateRing();
   updateDailyBar();
 }
 
@@ -839,27 +1017,30 @@ function voiceOnRep(n) {
 btnToggle.addEventListener('click', () => S.running ? stopSession() : startSession());
 btnReset.addEventListener('click', resetSession);
 
-async function startSession() {
-  S.running   = true;
-  S.t0        = S.t0 ?? Date.now();
-  // Reset detection state so prior noise/peak estimates don't block first rep
-  DET.pkState = 'FLAT';
-  DET.pkMax   = 0;
-  DET.pkStart = 0;
-  DET.noiseEMA = 0;
-  S.tid     = setInterval(updateTimer, 500);
-  updateTimer();
+function startSession() {
+  if (S.running) return;
+  // Show prep countdown, then start
+  runCountdown(async () => {
+    S.running    = true;
+    S.t0         = S.t0 ?? Date.now();
+    DET.pkState  = 'FLAT';
+    DET.pkMax    = 0;
+    DET.pkStart  = 0;
+    DET.noiseEMA = 0;
+    S.tid        = setInterval(updateTimer, 500);
+    updateTimer();
 
-  btnToggle.classList.add('on');
-  icoPlay.classList.add('hidden');
-  icoStop.classList.remove('hidden');
-  liveDot.classList.add('on');
+    btnToggle.classList.add('on');
+    icoPlay.classList.add('hidden');
+    icoStop.classList.remove('hidden');
+    liveDot.classList.add('on');
 
-  speak('C\'est parti !');
+    speak('C\'est parti !');
 
-  if ('wakeLock' in navigator) {
-    try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
-  }
+    if ('wakeLock' in navigator) {
+      try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    }
+  });
 }
 
 function stopSession() {
@@ -880,6 +1061,7 @@ function stopSession() {
     updateDailyBar();
     speak(`Bien joué ! ${S.count} pompes.`);
     toast(`${S.count} répétitions sauvegardées`);
+    checkProgAdvance(S.count);
   }
 }
 
@@ -892,6 +1074,7 @@ function resetSession() {
   DET.pkMax   = 0;
   countEl.textContent = '0';
   timerEl.textContent = '0:00';
+  updateRing();
   updateSessNum();
 }
 
@@ -1064,6 +1247,8 @@ function saveSettings() {
     vibrate:    S.vibrate,
     voiceOn:    S.voiceOn,
     level:      S.level,
+    progIdx:    S.progIdx,
+    progDone:   S.progDone,
   }));
 }
 
@@ -1074,8 +1259,10 @@ function loadSettings() {
     S.autoThr    = c.autoThr    ?? true;
     S.cooldownMs = c.cooldownMs ?? 700;
     S.vibrate    = c.vibrate    ?? true;
-    S.voiceOn    = c.voiceOn    ?? false;
+    S.voiceOn    = c.voiceOn    ?? true;
     S.level      = c.level      ?? 'intermediaire';
+    S.progIdx    = c.progIdx    ?? 0;
+    S.progDone   = c.progDone   ?? false;
   } catch {}
 
   thrRange.value        = S.threshold;
@@ -1155,6 +1342,84 @@ btnClear.addEventListener('click', () => {
   updateSessNum();
   toast('Historique effacé');
 });
+
+// ── Programme ─────────────────────────────────────────────────────────────
+function checkProgAdvance(count) {
+  if (S.progDone) return;
+  const cur = PROG_SESSIONS[S.progIdx];
+  if (!cur || count < cur.target) return;
+  S.progIdx++;
+  if (S.progIdx >= PROG_SESSIONS.length) {
+    S.progDone = true;
+    speak('Félicitations ! Programme cent pompes terminé !');
+    toast('🏆 Programme terminé ! 100 pompes !');
+  } else {
+    const next = PROG_SESSIONS[S.progIdx];
+    toast(`Séance validée ! Prochain objectif : ${next.target} pompes`);
+  }
+  saveSettings();
+  renderProgram();
+}
+
+function weeksHTML(doneCount) {
+  let html = '', flat = 0;
+  PROGRAM.forEach(week => {
+    html += `<div class="prog-week-block">
+      <div class="prog-week-hdr">
+        <span class="prog-week-title">Semaine ${week.week}</span>
+        <span class="prog-week-tag">${week.label}</span>
+      </div>
+      <div class="prog-sess-row">`;
+    week.targets.forEach(target => {
+      const isDone   = flat < doneCount;
+      const isActive = flat === doneCount && !S.progDone;
+      const cls      = isDone ? 'done' : isActive ? 'active' : '';
+      html += `<div class="prog-s ${cls}">${target}</div>`;
+      flat++;
+    });
+    html += `</div></div>`;
+  });
+  return html;
+}
+
+function renderProgram() {
+  if (!progContent) return;
+  if (S.progDone) {
+    progContent.innerHTML = `
+      <div class="prog-done-card">
+        <p style="font-size:3rem;margin-bottom:.5rem">🏆</p>
+        <h2>100 pompes atteint !</h2>
+        <p>Programme terminé en ${S.progIdx} séances.<br>Continuez à vous surpasser !</p>
+      </div>
+      ${weeksHTML(PROG_SESSIONS.length)}`;
+    return;
+  }
+  const cur = PROG_SESSIONS[Math.min(S.progIdx, PROG_SESSIONS.length - 1)];
+  const pct = Math.round((S.progIdx / PROG_SESSIONS.length) * 100);
+  progContent.innerHTML = `
+    <div class="prog-hero">
+      <div class="prog-hero-top">Semaine ${cur.week} · ${cur.label} · Séance ${S.progIdx + 1} / 24</div>
+      <div class="prog-hero-row">
+        <div class="prog-hero-num">${cur.target}</div>
+        <div class="prog-hero-unit">pompes</div>
+      </div>
+      <div class="prog-hero-tip">Faites ${cur.target} répétitions d'affilée.&nbsp; Progression : ${pct} %</div>
+      <button class="btn-prog-go" id="btn-prog-go">Démarrer ▶</button>
+    </div>
+    ${weeksHTML(S.progIdx)}`;
+  $('btn-prog-go').addEventListener('click', () => {
+    navTo('s-counter');
+    setTimeout(() => { if (!S.running) startSession(); }, 80);
+  });
+}
+
+function navTo(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  $(screenId).classList.add('active');
+  const btn = document.querySelector(`[data-target="${screenId}"]`);
+  if (btn) btn.classList.add('active');
+}
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-btn').forEach(btn => {
