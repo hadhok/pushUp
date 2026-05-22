@@ -82,6 +82,7 @@
     /* ── Screens ────────────────────────────────────────── */
     .screen {
       flex: 1;
+      min-height: 0;            /* permet au scroll de fonctionner dans un flex parent */
       overflow-y: auto;
       overflow-x: hidden;
       display: none;
@@ -268,6 +269,7 @@
       background: var(--bg2);
       border-radius: 16px;
       overflow: hidden;
+      flex-shrink: 0;           /* empêche le card de se comprimer et couper son contenu */
     }
 
     .card-row {
