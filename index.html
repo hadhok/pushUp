@@ -9,12 +9,9 @@
   <title>Push-Up</title>
   <style>
     *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+      box-sizing: border-box; margin: 0; padding: 0;
       -webkit-tap-highlight-color: transparent;
     }
-
     :root {
       --bg:     #0d0d0d;
       --bg2:    #1a1a1a;
@@ -25,9 +22,9 @@
       --mid:    #999;
       --dim:    #555;
       --grn:    #4ade80;
+      --grn-lo: rgba(74,222,128,.15);
       --red:    #f87171;
     }
-
     html, body {
       height: 100%;
       background: var(--bg);
@@ -37,393 +34,212 @@
       overscroll-behavior: none;
     }
 
-    /* ── Permission overlay ─────────────────────────────── */
+    /* ── Permission ──────────────────────────────────────── */
     #perm {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      z-index: 99;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 2.5rem 2rem;
-      gap: 1.4rem;
-      text-align: center;
+      position: fixed; inset: 0; background: var(--bg); z-index: 99;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 2.5rem 2rem; gap: 1.4rem; text-align: center;
     }
-
     #perm .big-icon { font-size: 4rem; }
     #perm h1 { font-size: 1.35rem; font-weight: 700; }
-    #perm p  { color: var(--mid); line-height: 1.65; font-size: 0.93rem; max-width: 300px; }
-
+    #perm p  { color: var(--mid); line-height: 1.65; font-size: .93rem; max-width: 300px; }
     .btn-cta {
-      background: var(--acc);
-      color: #fff;
-      border: none;
-      border-radius: 50px;
-      font-size: 1.05rem;
-      font-weight: 600;
-      padding: 0.9rem 2.5rem;
-      cursor: pointer;
-      transition: transform .1s, opacity .15s;
-      margin-top: 0.5rem;
+      background: var(--acc); color: #fff; border: none; border-radius: 50px;
+      font-size: 1.05rem; font-weight: 600; padding: .9rem 2.5rem; cursor: pointer;
+      transition: transform .1s, opacity .15s; margin-top: .5rem;
     }
     .btn-cta:active { transform: scale(.94); opacity: .85; }
 
-    /* ── App shell ──────────────────────────────────────── */
-    #app {
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-
+    /* ── App shell ───────────────────────────────────────── */
+    #app { height: 100dvh; display: flex; flex-direction: column; }
     .hidden { display: none !important; }
 
-    /* ── Screens ────────────────────────────────────────── */
+    /* ── Screens ─────────────────────────────────────────── */
     .screen {
-      flex: 1;
-      min-height: 0;            /* permet au scroll de fonctionner dans un flex parent */
-      overflow-y: auto;
-      overflow-x: hidden;
-      display: none;
-      flex-direction: column;
+      flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+      display: none; flex-direction: column;
       -webkit-overflow-scrolling: touch;
     }
     .screen.active { display: flex; }
 
-    /* ── Counter screen ─────────────────────────────────── */
+    /* ── Counter screen ──────────────────────────────────── */
     #s-counter {
-      align-items: center;
-      justify-content: space-between;
-      padding: 1.5rem 1.5rem 1.25rem;
-      min-height: 0;
+      align-items: center; justify-content: space-between;
+      padding: 1.4rem 1.5rem 1.1rem;
     }
-
     .top-bar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
     }
-
-    .chip {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      min-width: 52px;
-    }
-    .chip .lbl {
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: .1em;
-      color: var(--dim);
-    }
-    .chip .val {
-      font-size: 1rem;
-      font-weight: 700;
-    }
+    .chip { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 56px; }
+    .chip .lbl { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); }
+    .chip .val  { font-size: 1rem; font-weight: 700; }
 
     .live-dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      background: var(--dim);
+      width: 9px; height: 9px; border-radius: 50%; background: var(--dim);
       transition: background .3s, box-shadow .3s;
     }
     .live-dot.on {
-      background: var(--grn);
-      box-shadow: 0 0 10px var(--grn);
+      background: var(--grn); box-shadow: 0 0 10px var(--grn);
       animation: blink 1.3s ease-in-out infinite;
     }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
 
     /* Giant counter */
-    .count-wrap {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
+    .count-wrap { display: flex; flex-direction: column; align-items: center; }
     #count {
       font-size: clamp(90px, 36vw, 210px);
-      font-weight: 900;
-      line-height: .9;
-      letter-spacing: -.04em;
-      font-variant-numeric: tabular-nums;
-      color: var(--txt);
-      transition: transform .08s ease-out, color .08s;
-      user-select: none;
+      font-weight: 900; line-height: .9; letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums; color: var(--txt);
+      transition: transform .08s ease-out, color .08s; user-select: none;
     }
-    #count.flash {
-      transform: scale(1.08);
-      color: var(--acc);
-    }
-
+    #count.flash { transform: scale(1.08); color: var(--acc); }
     .count-sub {
-      margin-top: .55rem;
-      font-size: .72rem;
-      text-transform: uppercase;
-      letter-spacing: .2em;
-      color: var(--dim);
+      margin-top: .55rem; font-size: .72rem;
+      text-transform: uppercase; letter-spacing: .2em; color: var(--dim);
     }
-
     #timer {
-      margin-top: .45rem;
-      font-size: 2rem;
-      font-weight: 300;
-      letter-spacing: .06em;
-      font-variant-numeric: tabular-nums;
-      color: var(--mid);
+      margin-top: .4rem; font-size: 1.9rem; font-weight: 300;
+      letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--mid);
     }
 
-    /* Signal bar */
-    .sig-wrap {
-      width: 88%;
-      max-width: 320px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
+    /* Daily progress bar */
+    .daily-wrap { width: 88%; max-width: 320px; }
+    .daily-hdr {
+      display: flex; justify-content: space-between;
+      font-size: .68rem; color: var(--dim); margin-bottom: 5px;
+      text-transform: uppercase; letter-spacing: .06em;
     }
+    #daily-pct { color: var(--mid); }
+    .daily-track {
+      height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden;
+    }
+    .daily-fill {
+      height: 100%; background: var(--grn); border-radius: 2px;
+      transition: width .35s; width: 0;
+    }
+    .daily-fill.done { background: var(--acc); }
+
+    /* Canvas sparkline */
+    .sig-wrap { width: 88%; max-width: 320px; }
     .sig-hdr {
-      display: flex;
-      justify-content: space-between;
-      font-size: .68rem;
-      color: var(--dim);
-      text-transform: uppercase;
-      letter-spacing: .07em;
+      display: flex; justify-content: space-between;
+      font-size: .68rem; color: var(--dim);
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: 5px;
     }
-    .sig-track {
-      height: 3px;
-      background: var(--bg3);
-      border-radius: 2px;
-      overflow: hidden;
-      position: relative;
-    }
-    .sig-fill {
-      height: 100%;
-      background: var(--acc);
-      border-radius: 2px;
-      transition: width .05s linear;
-      width: 0;
-    }
-    .sig-fill.hot { background: var(--grn); }
-    .sig-peak-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: .68rem;
-      margin-top: 3px;
-    }
-    .sig-peak-lbl { color: var(--dim); }
-    #sig-peak { color: var(--acc); font-weight: 600; }
+    #sig-canvas { width: 100%; height: 56px; display: block; border-radius: 8px; }
 
     /* Controls */
-    .controls {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: .7rem;
-    }
-
+    .controls { display: flex; flex-direction: column; align-items: center; gap: .65rem; }
     #btn-toggle {
-      width: 78px; height: 78px;
-      border-radius: 50%;
-      border: 2.5px solid var(--acc);
-      background: transparent;
+      width: 78px; height: 78px; border-radius: 50%;
+      border: 2.5px solid var(--acc); background: transparent;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: background .2s, box-shadow .2s, transform .1s;
-      position: relative;
+      cursor: pointer; transition: background .2s, box-shadow .2s, transform .1s;
     }
-    #btn-toggle.on {
-      background: var(--acc);
-      box-shadow: 0 0 28px var(--acc-lo);
-    }
+    #btn-toggle.on { background: var(--acc); box-shadow: 0 0 28px var(--acc-lo); }
     #btn-toggle:active { transform: scale(.9); }
     #btn-toggle svg { width: 30px; height: 30px; fill: var(--acc); }
     #btn-toggle.on svg { fill: #fff; }
-
     #btn-reset {
-      background: none;
-      border: none;
-      font-size: .82rem;
-      color: var(--dim);
-      cursor: pointer;
-      padding: .4rem 1rem;
-      border-radius: 20px;
-      transition: color .2s;
+      background: none; border: none; font-size: .82rem;
+      color: var(--dim); cursor: pointer; padding: .4rem 1rem; border-radius: 20px;
     }
     #btn-reset:active { color: var(--txt); }
 
-    /* ── Settings screen ─────────────────────────────────── */
-    #s-settings {
-      padding: 1.5rem;
-      gap: 1.2rem;
-    }
-
-    .scr-title {
-      font-size: 1.15rem;
-      font-weight: 700;
-    }
-
+    /* ── Settings ────────────────────────────────────────── */
+    #s-settings { padding: 1.5rem; gap: 1.2rem; }
+    .scr-title { font-size: 1.15rem; font-weight: 700; flex-shrink: 0; }
     .card {
-      background: var(--bg2);
-      border-radius: 16px;
-      overflow: hidden;
-      flex-shrink: 0;           /* empêche le card de se comprimer et couper son contenu */
+      background: var(--bg2); border-radius: 16px;
+      overflow: hidden; flex-shrink: 0;
     }
-
-    .card-row {
-      padding: 1rem 1.25rem;
-      border-bottom: 1px solid var(--bg3);
-    }
+    .card-row { padding: 1rem 1.25rem; border-bottom: 1px solid var(--bg3); }
     .card-row:last-child { border-bottom: none; }
-
     .row-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: .55rem;
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: .55rem;
     }
     .row-name { font-size: .95rem; font-weight: 500; }
     .row-val  { font-size: .9rem; font-weight: 600; color: var(--acc); }
-    .row-hint {
-      font-size: .78rem;
-      color: var(--dim);
-      line-height: 1.55;
-      margin-top: .45rem;
-    }
+    .row-hint { font-size: .78rem; color: var(--dim); line-height: 1.55; margin-top: .4rem; }
 
     input[type=range] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 3px;
-      background: var(--bg3);
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 3px; background: var(--bg3); border-radius: 2px;
+      outline: none; cursor: pointer;
     }
+    input[type=range]:disabled { opacity: .35; pointer-events: none; }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      background: var(--acc);
-      box-shadow: 0 0 0 4px var(--acc-lo);
+      -webkit-appearance: none; width: 22px; height: 22px;
+      border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 4px var(--acc-lo);
     }
     input[type=range]::-moz-range-thumb {
-      width: 22px; height: 22px;
-      border-radius: 50%;
-      background: var(--acc);
-      border: none;
+      width: 22px; height: 22px; border-radius: 50%; background: var(--acc); border: none;
     }
-
-    /* Calibration button */
-    .btn-calib {
-      background: var(--acc-lo);
-      border: 1px solid var(--acc);
-      color: var(--acc);
-      border-radius: 10px;
-      font-size: .88rem;
-      font-weight: 600;
-      padding: .6rem 1rem;
-      cursor: pointer;
-      width: 100%;
-      transition: background .15s, transform .1s;
-    }
-    .btn-calib:active { transform: scale(.97); }
-    .btn-calib:disabled { opacity: .4; cursor: default; }
 
     /* Toggle */
     .tog { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
     .tog input { position: absolute; opacity: 0; width: 0; height: 0; }
     .tog-track {
-      position: absolute; inset: 0;
-      background: var(--bg3);
-      border-radius: 13px;
-      transition: background .2s;
-      cursor: pointer;
+      position: absolute; inset: 0; background: var(--bg3);
+      border-radius: 13px; transition: background .2s; cursor: pointer;
     }
     .tog-thumb {
-      position: absolute;
-      left: 3px; top: 3px;
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform .2s;
-      pointer-events: none;
+      position: absolute; left: 3px; top: 3px; width: 20px; height: 20px;
+      border-radius: 50%; background: #fff; transition: transform .2s; pointer-events: none;
     }
     .tog input:checked ~ .tog-track { background: var(--acc); }
     .tog input:checked ~ .tog-thumb { transform: translateX(20px); }
 
-    /* ── History screen ──────────────────────────────────── */
-    #s-history {
-      padding: 1.5rem;
-      gap: 1rem;
+    /* Level chips */
+    .level-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: .1rem; }
+    .chip-btn {
+      flex: 1; min-width: 60px; padding: .45rem .3rem;
+      border-radius: 8px; border: 1px solid var(--bg3);
+      background: var(--bg3); color: var(--mid);
+      font-size: .78rem; cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .chip-btn.active {
+      background: var(--acc-lo); border-color: var(--acc);
+      color: var(--acc); font-weight: 600;
     }
 
-    .hist-hdr {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    /* Calibration button */
+    .btn-calib {
+      background: var(--acc-lo); border: 1px solid var(--acc); color: var(--acc);
+      border-radius: 10px; font-size: .88rem; font-weight: 600; padding: .6rem 1rem;
+      cursor: pointer; width: 100%; transition: background .15s, transform .1s;
     }
+    .btn-calib:active { transform: scale(.97); }
+    .btn-calib:disabled { opacity: .4; cursor: default; }
 
-    .btn-danger {
-      background: none; border: none;
-      font-size: .82rem;
-      color: var(--red);
-      cursor: pointer; padding: .25rem .5rem;
-    }
-
-    .sess-list {
-      display: flex; flex-direction: column; gap: .65rem;
-      padding-bottom: 1rem;
-    }
-
+    /* ── History ─────────────────────────────────────────── */
+    #s-history { padding: 1.5rem; gap: 1rem; }
+    .hist-hdr { display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    .btn-danger { background: none; border: none; font-size: .82rem; color: var(--red); cursor: pointer; padding: .25rem .5rem; }
+    .sess-list { display: flex; flex-direction: column; gap: .65rem; padding-bottom: 1rem; }
     .sess-card {
-      background: var(--bg2);
-      border-radius: 14px;
-      padding: .9rem 1.2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
+      background: var(--bg2); border-radius: 14px; padding: .9rem 1.2rem;
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
     }
-
     .sess-date { font-size: .78rem; color: var(--mid); margin-bottom: 3px; }
     .sess-meta { font-size: .76rem; color: var(--dim); }
     .sess-reps {
-      font-size: 2rem; font-weight: 800;
-      color: var(--acc);
-      font-variant-numeric: tabular-nums;
-      flex-shrink: 0;
+      font-size: 2rem; font-weight: 800; color: var(--acc);
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
     }
+    .daily-done { color: var(--grn); font-size: .72rem; margin-top: 2px; }
+    .empty { text-align: center; padding: 3.5rem 0; color: var(--dim); font-size: .9rem; }
 
-    .empty {
-      text-align: center; padding: 3.5rem 0;
-      color: var(--dim); font-size: .9rem;
-    }
-
-    /* ── Bottom nav ──────────────────────────────────────── */
+    /* ── Nav ─────────────────────────────────────────────── */
     nav {
-      display: flex;
-      background: var(--bg2);
-      border-top: 1px solid var(--bg3);
-      padding-bottom: max(env(safe-area-inset-bottom), 4px);
-      flex-shrink: 0;
+      display: flex; background: var(--bg2); border-top: 1px solid var(--bg3);
+      padding-bottom: max(env(safe-area-inset-bottom), 4px); flex-shrink: 0;
     }
-
     .nav-btn {
-      flex: 1;
-      display: flex; flex-direction: column;
-      align-items: center; gap: 3px;
-      padding: 10px 0 6px;
-      background: none; border: none;
-      color: var(--dim);
-      font-size: .6rem;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      cursor: pointer;
-      transition: color .15s;
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 10px 0 6px; background: none; border: none; color: var(--dim);
+      font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; cursor: pointer;
     }
     .nav-btn svg { width: 22px; height: 22px; fill: currentColor; }
     .nav-btn.active { color: var(--acc); }
@@ -432,36 +248,29 @@
     #toast {
       position: fixed;
       bottom: calc(64px + max(env(safe-area-inset-bottom), 4px) + 10px);
-      left: 50%;
-      transform: translateX(-50%) translateY(14px);
-      background: var(--bg3);
-      color: var(--txt);
-      border-radius: 50px;
-      padding: .6rem 1.4rem;
-      font-size: .88rem;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .25s, transform .25s;
-      z-index: 50;
+      left: 50%; transform: translateX(-50%) translateY(14px);
+      background: var(--bg3); color: var(--txt); border-radius: 50px;
+      padding: .6rem 1.4rem; font-size: .88rem; white-space: nowrap;
+      opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50;
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
 
-<!-- ── Permission screen ─────────────────────────────────────────── -->
+<!-- ── Permission ──────────────────────────────────────────── -->
 <div id="perm">
   <div class="big-icon">📱</div>
   <h1>Accès au mouvement requis</h1>
   <p>
     Cette app utilise l'accéléromètre pour compter vos pompes.<br><br>
-    Posez le téléphone <strong>à plat, écran vers le haut</strong>, sous votre poitrine. Chaque fois que votre poitrine touche l'écran, une répétition est comptée.
+    Posez le téléphone <strong>à plat, écran vers le haut</strong>, sous votre poitrine.
+    Chaque fois que votre poitrine touche l'écran, une répétition est comptée.
   </p>
   <button class="btn-cta" id="perm-btn">Autoriser l'accès</button>
 </div>
 
-<!-- ── App ───────────────────────────────────────────────────────── -->
+<!-- ── App ─────────────────────────────────────────────────── -->
 <div id="app" class="hidden">
 
   <!-- Counter -->
@@ -474,8 +283,8 @@
       </div>
       <div class="live-dot" id="live-dot"></div>
       <div class="chip">
-        <span class="lbl">Record</span>
-        <span class="val" id="best">0</span>
+        <span class="lbl">Streak</span>
+        <span class="val" id="streak-val">0 j</span>
       </div>
     </div>
 
@@ -485,18 +294,22 @@
       <div id="timer">0:00</div>
     </div>
 
+    <div class="daily-wrap">
+      <div class="daily-hdr">
+        <span id="daily-label">Objectif du jour</span>
+        <span id="daily-pct">0 / 40</span>
+      </div>
+      <div class="daily-track">
+        <div class="daily-fill" id="daily-fill"></div>
+      </div>
+    </div>
+
     <div class="sig-wrap">
       <div class="sig-hdr">
-        <span>Signal</span>
+        <span>Accéléromètre</span>
         <span id="sig-val">0.0 m/s²</span>
       </div>
-      <div class="sig-track">
-        <div class="sig-fill" id="sig-fill"></div>
-      </div>
-      <div class="sig-peak-row">
-        <span class="sig-peak-lbl">Pic récent</span>
-        <span id="sig-peak">—</span>
-      </div>
+      <canvas id="sig-canvas"></canvas>
     </div>
 
     <div class="controls">
@@ -514,21 +327,34 @@
 
     <div class="scr-title">Réglages</div>
 
+    <!-- Detection -->
     <div class="card">
       <div class="card-row">
         <div class="row-top">
           <span class="row-name">Seuil de détection</span>
-          <span class="row-val" id="thr-lbl">1.5 m/s²</span>
+          <span class="row-val" id="thr-lbl">auto</span>
         </div>
-        <input type="range" id="thr-range" min="0.2" max="10" step="0.1" value="1.5">
-        <p class="row-hint">Réglez entre le bruit de fond et le pic de contact. Consultez "Pic récent" sur l'écran compteur et visez 50–70 % de cette valeur.</p>
+        <input type="range" id="thr-range" min="0.2" max="10" step="0.1" value="1.5" disabled>
+        <p class="row-hint">Désactivez le seuil auto pour régler manuellement. Consultez "Accéléromètre" sur l'écran compteur et réglez à 50–70 % du pic de contact.</p>
+      </div>
+
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Seuil automatique</span>
+          <label class="tog">
+            <input type="checkbox" id="auto-thr-tog" checked>
+            <div class="tog-track"></div>
+            <div class="tog-thumb"></div>
+          </label>
+        </div>
+        <p class="row-hint">Calcule le seuil en temps réel à partir du bruit de fond et de l'intensité de vos contacts.</p>
       </div>
 
       <div class="card-row">
         <div class="row-top">
           <span class="row-name">Auto-calibrer</span>
         </div>
-        <p class="row-hint" style="margin-bottom:.65rem">Appuyez, puis faites <strong>3 pompes</strong> normalement. Le seuil sera réglé automatiquement.</p>
+        <p class="row-hint" style="margin-bottom:.65rem">Appuyez, faites <strong>3 pompes</strong>, le seuil manuel sera réglé.</p>
         <button class="btn-calib" id="btn-calib">Lancer la calibration (5 s)</button>
         <div id="calib-status" style="font-size:.8rem;color:var(--acc);margin-top:.5rem;min-height:1.1em;"></div>
       </div>
@@ -555,6 +381,39 @@
       </div>
     </div>
 
+    <!-- Coach vocal -->
+    <div class="card">
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Coach vocal</span>
+          <label class="tog">
+            <input type="checkbox" id="voice-tog">
+            <div class="tog-track"></div>
+            <div class="tog-thumb"></div>
+          </label>
+        </div>
+        <p class="row-hint">Annonce le compte toutes les 5 reps, les caps (10, 20, 50…) et l'objectif quotidien atteint.</p>
+      </div>
+    </div>
+
+    <!-- Programme -->
+    <div class="card">
+      <div class="card-row">
+        <div class="row-top">
+          <span class="row-name">Niveau</span>
+          <span class="row-val" id="goal-lbl">40 / j</span>
+        </div>
+        <div class="level-chips">
+          <button class="chip-btn" data-level="debutant">Débutant</button>
+          <button class="chip-btn active" data-level="intermediaire">Inter.</button>
+          <button class="chip-btn" data-level="confirme">Confirmé</button>
+          <button class="chip-btn" data-level="expert">Expert</button>
+        </div>
+        <p class="row-hint">Débutant 20 · Intermédiaire 40 · Confirmé 60 · Expert 100 pompes par jour.</p>
+      </div>
+    </div>
+
+    <!-- How to use -->
     <div class="card">
       <div class="card-row">
         <span class="row-name">Comment utiliser</span>
@@ -583,24 +442,18 @@
 
   </section>
 
-  <!-- Bottom nav -->
+  <!-- Nav -->
   <nav>
     <button class="nav-btn active" data-target="s-counter">
-      <svg viewBox="0 0 24 24">
-        <path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.81 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.82 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5V2.05z"/>
-      </svg>
+      <svg viewBox="0 0 24 24"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.81 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.82 2 12c0 3.76 2.09 7.07 5.22 8.78L6 22h5V2.05z"/></svg>
       Compteur
     </button>
     <button class="nav-btn" data-target="s-settings">
-      <svg viewBox="0 0 24 24">
-        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.22-.07.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-      </svg>
+      <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.22-.07.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       Réglages
     </button>
     <button class="nav-btn" data-target="s-history">
-      <svg viewBox="0 0 24 24">
-        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21L13 13.15V8h-1z"/>
-      </svg>
+      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21L13 13.15V8h-1z"/></svg>
       Historique
     </button>
   </nav>
@@ -612,81 +465,103 @@
 <script>
 'use strict';
 
+// ── Constants ──────────────────────────────────────────────────────────────
+const LEVEL_GOALS = { debutant: 20, intermediaire: 40, confirme: 60, expert: 100 };
+const SIG_N       = 80;   // canvas sparkline history length
+
 // ── State ──────────────────────────────────────────────────────────────────
 const S = {
+  // Session
   running:    false,
   count:      0,
-  t0:         null,   // session start ms
-  tid:        null,   // timer interval
-  threshold:  8,      // m/s²  — lower default = more accessible
-  cooldownMs: 700,    // minimum ms between reps
-  vibrate:    true,
-  sessions:   [],
+  t0:         null,
+  tid:        null,
   wakeLock:   null,
-  // Detection internals (not persisted)
-  hState:     'IDLE', // 'IDLE' | 'TRIGGERED'
   lastRepMs:  0,
-  peakVal:    0,
-  peakTid:    null,
+  // Settings
+  threshold:  1.5,
+  autoThr:    true,
+  cooldownMs: 700,
+  vibrate:    true,
+  voiceOn:    false,
+  level:      'intermediaire',
+  // Calibration
   calibTid:   null,
   calibPeak:  0,
+  // Per-session totals saved on stop
+  sessions:   [],
 };
 
-// ── DOM refs ───────────────────────────────────────────────────────────────
-const $  = id => document.getElementById(id);
-const permEl    = $('perm');
-const permBtn   = $('perm-btn');
-const appEl     = $('app');
-const countEl   = $('count');
-const timerEl   = $('timer');
-const liveDot   = $('live-dot');
-const sessNum   = $('sess-num');
-const bestEl    = $('best');
-const sigFill   = $('sig-fill');
-const sigVal    = $('sig-val');
-const sigPeak   = $('sig-peak');
-const btnToggle = $('btn-toggle');
-const icoPlay   = $('ico-play');
-const icoStop   = $('ico-stop');
-const btnReset  = $('btn-reset');
-const thrRange  = $('thr-range');
-const thrLbl    = $('thr-lbl');
-const cdRange   = $('cd-range');
-const cdLbl     = $('cd-lbl');
-const vibTog    = $('vib-tog');
-const sessList  = $('sess-list');
-const btnClear  = $('btn-clear');
-const toastEl   = $('toast');
+// ── Detection state (separate from S for clarity) ─────────────────────────
+const DET = {
+  pkState:  'FLAT',   // 'FLAT' | 'CLIMBING'
+  pkMax:    0,        // current peak maximum
+  pkStart:  0,        // timestamp when we entered CLIMBING
+  noiseEMA: 0,        // slow EMA of quiet signal (noise floor)
+  peakEMA:  2.0,      // EMA of recent confirmed peak heights
+};
+
+// ── Signal buffer for canvas ───────────────────────────────────────────────
+const sigBuf  = new Float32Array(SIG_N);
+let   sigPtr  = 0;
+let   sigMax  = 1;
+let   rafId   = null;
+
+// ── DOM ────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const permEl      = $('perm');
+const permBtn     = $('perm-btn');
+const appEl       = $('app');
+const countEl     = $('count');
+const timerEl     = $('timer');
+const liveDot     = $('live-dot');
+const sessNum     = $('sess-num');
+const streakVal   = $('streak-val');
+const dailyFill   = $('daily-fill');
+const dailyPct    = $('daily-pct');
+const sigCanvas   = $('sig-canvas');
+const sigVal      = $('sig-val');
+const btnToggle   = $('btn-toggle');
+const icoPlay     = $('ico-play');
+const icoStop     = $('ico-stop');
+const btnReset    = $('btn-reset');
+const thrRange    = $('thr-range');
+const thrLbl      = $('thr-lbl');
+const autoThrTog  = $('auto-thr-tog');
+const cdRange     = $('cd-range');
+const cdLbl       = $('cd-lbl');
+const vibTog      = $('vib-tog');
+const voiceTog    = $('voice-tog');
+const btnCalib    = $('btn-calib');
+const calibStatus = $('calib-status');
+const goalLbl     = $('goal-lbl');
+const sessList    = $('sess-list');
+const btnClear    = $('btn-clear');
+const toastEl     = $('toast');
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 function boot() {
   loadSettings();
   loadHistory();
+  initCanvas();
 
   if (typeof DeviceMotionEvent === 'undefined') {
     permEl.querySelector('h1').textContent = 'Non supporté';
-    permEl.querySelector('p').textContent =
-      'Votre navigateur ne supporte pas DeviceMotionEvent. Essayez Safari sur iOS ou Chrome sur Android.';
-    permBtn.textContent = 'Continuer sans détection';
+    permEl.querySelector('p').textContent  =
+      'Votre navigateur ne supporte pas DeviceMotionEvent. Essayez Safari (iOS) ou Chrome (Android).';
     permBtn.addEventListener('click', showApp);
     return;
   }
 
   if (typeof DeviceMotionEvent.requestPermission === 'function') {
-    // iOS 13+: must request from user gesture
     permBtn.addEventListener('click', async () => {
       try {
         const res = await DeviceMotionEvent.requestPermission();
         if (res === 'granted') { startMotion(); showApp(); }
-        else { toast('Permission refusée — activez dans Réglages > Safari'); }
-      } catch (e) {
-        // Already granted or unexpected error
-        startMotion();
-        showApp();
-      }
+        else toast('Permission refusée — activez dans Réglages > Safari');
+      } catch { startMotion(); showApp(); }
     });
   } else {
-    // Android / desktop — no permission needed
     startMotion();
     showApp();
   }
@@ -695,18 +570,26 @@ function boot() {
 function showApp() {
   permEl.classList.add('hidden');
   appEl.classList.remove('hidden');
+  startCanvas();
 }
 
-// ── Motion detection ───────────────────────────────────────────────────────
+// ── Motion ─────────────────────────────────────────────────────────────────
 function startMotion() {
   window.addEventListener('devicemotion', onMotion, { passive: true });
 }
 
 function onMotion(e) {
   let mag;
-
   const a = e.acceleration;
-  if (a && a.x !== null) {
+
+  if (a && a.z !== null) {
+    // Z-axis primary: most relevant for flat-phone impact detection
+    const az = Math.abs(a.z || 0);
+    const ax = Math.abs(a.x || 0);
+    const ay = Math.abs(a.y || 0);
+    // Weight Z heavily; small lateral contribution for robustness
+    mag = az + (ax + ay) * 0.15;
+  } else if (a && a.x !== null) {
     mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
   } else {
     const ag = e.accelerationIncludingGravity;
@@ -714,63 +597,222 @@ function onMotion(e) {
     mag = Math.abs(Math.hypot(ag.x || 0, ag.y || 0, ag.z || 0) - 9.81);
   }
 
-  // Track calibration peak when calibrating
+  // Push to canvas buffer
+  sigBuf[sigPtr % SIG_N] = mag;
+  sigPtr++;
+  sigMax = Math.max(sigMax * 0.9995, mag, activeThr() * 1.8, 0.5);
+
+  // Live value display
+  sigVal.textContent = mag.toFixed(2) + ' m/s²';
+
+  // Track calibration peak
   if (S.calibTid !== null) S.calibPeak = Math.max(S.calibPeak, mag);
 
-  updateSignalBar(mag);
-  if (S.running) detectRep(mag);
+  // Update adaptive baseline
+  updateAdaptive(mag);
+
+  if (S.running) detectRep(mag, Date.now());
 }
 
-// Two-threshold hysteresis state machine.
-// Counts one rep per "mountain" in the signal:
-//   IDLE     → mag crosses threshold UP      → register rep, enter TRIGGERED
-//   TRIGGERED → mag drops below threshold/4  → back to IDLE (ready for next)
-// Absolute minimum gap (S.cooldownMs) prevents counting multiple reps on
-// a single slow oscillation even if hysteresis alone isn't enough.
-function detectRep(mag) {
-  const thr   = S.threshold;
-  const reset = thr * 0.25;
-  const now   = Date.now();
+// ── Adaptive threshold ─────────────────────────────────────────────────────
+function activeThr() {
+  return S.autoThr ? computeAutoThr() : S.threshold;
+}
 
-  if (S.hState === 'IDLE') {
-    if (mag > thr && (now - S.lastRepMs) > S.cooldownMs) {
-      S.hState    = 'TRIGGERED';
+function computeAutoThr() {
+  const noise = DET.noiseEMA || 0.1;
+  const peak  = DET.peakEMA  || 2.0;
+  const gap   = peak - noise;
+  if (gap < 0.25) return noise + 0.5;
+  return noise + gap * 0.38;
+}
+
+function updateAdaptive(mag) {
+  const thr = activeThr();
+  if (DET.noiseEMA === 0) { DET.noiseEMA = mag; return; }
+
+  // Update noise floor only when signal is calm
+  if (mag < thr * 1.3) {
+    DET.noiseEMA = DET.noiseEMA * 0.985 + mag * 0.015;
+  }
+
+  // Sync displayed threshold when in auto mode
+  if (S.autoThr) {
+    const at = computeAutoThr();
+    thrLbl.textContent = at.toFixed(2) + ' m/s²';
+  }
+}
+
+// ── Peak detection ─────────────────────────────────────────────────────────
+// State machine:
+//   FLAT     → mag > thr                      → CLIMBING (start tracking peak)
+//   CLIMBING → mag > pkMax                    → update pkMax
+//   CLIMBING → mag < pkMax * 0.40 (≥30 ms)   → confirm rep, → FLAT
+//   CLIMBING → timeout > 1200 ms              → abort, → FLAT
+//
+// Counting on the CONFIRMED DESCENT (not rising edge) eliminates
+// false counts from noise oscillating around the threshold.
+function detectRep(mag, now) {
+  const thr = activeThr();
+
+  if (DET.pkState === 'FLAT') {
+    if (mag > thr) {
+      DET.pkState = 'CLIMBING';
+      DET.pkMax   = mag;
+      DET.pkStart = now;
+    }
+    return;
+  }
+
+  // CLIMBING
+  if (mag > DET.pkMax) {
+    DET.pkMax = mag;
+  }
+
+  const elapsed = now - DET.pkStart;
+
+  // Safety: abort if stuck climbing for too long
+  if (elapsed > 1200) {
+    DET.pkState = 'FLAT';
+    DET.pkMax   = 0;
+    return;
+  }
+
+  // Confirm: signal dropped to 40 % of peak AND we were above threshold ≥ 30 ms
+  if (elapsed >= 30 && mag < DET.pkMax * 0.40) {
+    DET.pkState = 'FLAT';
+    const savedPeak = DET.pkMax;
+    DET.pkMax   = 0;
+
+    if ((now - S.lastRepMs) > S.cooldownMs) {
       S.lastRepMs = now;
+      // Update peak EMA for adaptive threshold
+      DET.peakEMA = DET.peakEMA * 0.82 + savedPeak * 0.18;
       registerRep();
     }
-  } else {
-    if (mag < reset) S.hState = 'IDLE';
   }
 }
 
-function updateSignalBar(mag) {
-  const scale = S.threshold * 2.5;
-  const pct   = Math.min(100, (mag / scale) * 100);
-  sigFill.style.width = pct + '%';
-  sigFill.classList.toggle('hot', mag > S.threshold);
-  sigVal.textContent  = mag.toFixed(1) + ' m/s²';
+// ── Canvas sparkline ───────────────────────────────────────────────────────
+function initCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  // Defer sizing until element is in the DOM and has layout
+  requestAnimationFrame(() => {
+    sigCanvas.width  = Math.round(sigCanvas.offsetWidth  * dpr);
+    sigCanvas.height = Math.round(sigCanvas.offsetHeight * dpr);
+  });
+}
 
-  // Track rolling 3-second peak for calibration hint
-  if (mag > S.peakVal) {
-    S.peakVal = mag;
-    sigPeak.textContent = S.peakVal.toFixed(1) + ' m/s²';
-    clearTimeout(S.peakTid);
-    S.peakTid = setTimeout(() => {
-      S.peakVal = 0;
-      sigPeak.textContent = '—';
-    }, 3000);
+function startCanvas() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(renderCanvas);
+}
+
+function renderCanvas() {
+  rafId = requestAnimationFrame(renderCanvas);
+
+  const cv  = sigCanvas;
+  const ctx = cv.getContext('2d');
+  const W   = cv.width;
+  const H   = cv.height;
+  if (!W || !H) return;
+
+  const dpr = window.devicePixelRatio || 1;
+
+  // Background
+  ctx.fillStyle = '#252525';
+  ctx.fillRect(0, 0, W, H);
+
+  const thr    = activeThr();
+  const scale  = sigMax;
+  const padY   = H * 0.08;
+  const rangeY = H - padY * 2;
+
+  const toY = v => H - padY - (v / scale) * rangeY;
+
+  // Threshold line
+  const thrY = toY(thr);
+  if (thrY > 0 && thrY < H) {
+    ctx.strokeStyle = 'rgba(255,107,53,0.55)';
+    ctx.lineWidth   = 1 * dpr;
+    ctx.setLineDash([4 * dpr, 4 * dpr]);
+    ctx.beginPath();
+    ctx.moveTo(0, thrY);
+    ctx.lineTo(W, thrY);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
+
+  // Signal fill (area under curve)
+  const climbing = DET.pkState === 'CLIMBING';
+  ctx.beginPath();
+  for (let i = 0; i < SIG_N; i++) {
+    const idx = (sigPtr - SIG_N + i + SIG_N * 1000) % SIG_N;
+    const x   = (i / (SIG_N - 1)) * W;
+    const y   = toY(sigBuf[idx]);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  if (climbing) {
+    grad.addColorStop(0, 'rgba(74,222,128,.25)');
+    grad.addColorStop(1, 'rgba(74,222,128,.03)');
+  } else {
+    grad.addColorStop(0, 'rgba(255,107,53,.18)');
+    grad.addColorStop(1, 'rgba(255,107,53,.02)');
+  }
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Signal line
+  ctx.strokeStyle = climbing ? '#4ade80' : 'rgba(240,240,240,.8)';
+  ctx.lineWidth   = 1.5 * dpr;
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  for (let i = 0; i < SIG_N; i++) {
+    const idx = (sigPtr - SIG_N + i + SIG_N * 1000) % SIG_N;
+    const x   = (i / (SIG_N - 1)) * W;
+    const y   = toY(sigBuf[idx]);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
 }
 
 // ── Rep counting ───────────────────────────────────────────────────────────
 function registerRep() {
   S.count++;
-
   countEl.textContent = S.count;
   countEl.classList.add('flash');
   setTimeout(() => countEl.classList.remove('flash'), 140);
 
   if (S.vibrate && 'vibrate' in navigator) navigator.vibrate(80);
+
+  voiceOnRep(S.count);
+  updateDailyBar();
+}
+
+// ── Voice coach ────────────────────────────────────────────────────────────
+function speak(text) {
+  if (!S.voiceOn || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u   = new SpeechSynthesisUtterance(text);
+  u.lang    = 'fr-FR';
+  u.rate    = 1.15;
+  u.volume  = 1.0;
+  speechSynthesis.speak(u);
+}
+
+function voiceOnRep(n) {
+  const goal = LEVEL_GOALS[S.level];
+  if (n === goal) {
+    setTimeout(() => speak(`Objectif atteint ! ${n} pompes. Excellent !`), 200);
+    return;
+  }
+  if (n === 50 || n === 100)  { speak(`${n} pompes, incroyable !`); return; }
+  if (n % 10 === 0 && n > 0) { speak(`${n}, allez !`);              return; }
+  if (n % 5  === 0 && n > 0) { speak(`${n}`);                       return; }
 }
 
 // ── Session control ────────────────────────────────────────────────────────
@@ -779,8 +821,8 @@ btnReset.addEventListener('click', resetSession);
 
 async function startSession() {
   S.running = true;
-  S.t0 = S.t0 ?? Date.now();
-  S.tid = setInterval(updateTimer, 500);
+  S.t0      = S.t0 ?? Date.now();
+  S.tid     = setInterval(updateTimer, 500);
   updateTimer();
 
   btnToggle.classList.add('on');
@@ -788,7 +830,8 @@ async function startSession() {
   icoStop.classList.remove('hidden');
   liveDot.classList.add('on');
 
-  // Request wake lock to keep screen on
+  speak('C\'est parti !');
+
   if ('wakeLock' in navigator) {
     try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
   }
@@ -807,8 +850,11 @@ function stopSession() {
   if (S.wakeLock) { S.wakeLock.release(); S.wakeLock = null; }
 
   if (S.count > 0) {
+    addDailyReps(S.count);
     saveSession();
-    toast(`✓ ${S.count} répétitions sauvegardées`);
+    updateDailyBar();
+    speak(`Bien joué ! ${S.count} pompes.`);
+    toast(`${S.count} répétitions sauvegardées`);
   }
 }
 
@@ -816,11 +862,9 @@ function resetSession() {
   if (S.running) stopSession();
   S.count     = 0;
   S.t0        = null;
-  S.hState    = 'IDLE';
   S.lastRepMs = 0;
-  S.peakVal   = 0;
-  clearTimeout(S.peakTid);
-  sigPeak.textContent = '—';
+  DET.pkState = 'FLAT';
+  DET.pkMax   = 0;
   countEl.textContent = '0';
   timerEl.textContent = '0:00';
   updateSessNum();
@@ -833,103 +877,182 @@ function updateTimer() {
     `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
 
+document.addEventListener('visibilitychange', async () => {
+  if (S.running && !S.wakeLock && document.visibilityState === 'visible') {
+    try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+});
+
+// ── Daily program ──────────────────────────────────────────────────────────
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDailyReps() {
+  try {
+    return (JSON.parse(localStorage.getItem('pu_daily') || '{}'))[todayKey()] || 0;
+  } catch { return 0; }
+}
+
+function addDailyReps(n) {
+  try {
+    const daily = JSON.parse(localStorage.getItem('pu_daily') || '{}');
+    const key   = todayKey();
+    daily[key]  = (daily[key] || 0) + n;
+    const keys  = Object.keys(daily).sort();
+    if (keys.length > 60) delete daily[keys[0]];
+    localStorage.setItem('pu_daily', JSON.stringify(daily));
+  } catch {}
+}
+
+function getStreak() {
+  try {
+    const daily = JSON.parse(localStorage.getItem('pu_daily') || '{}');
+    const goal  = LEVEL_GOALS[S.level];
+    let streak  = 0;
+    const d     = new Date();
+    for (let i = 0; i < 365; i++) {
+      const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if ((daily[k] || 0) >= goal) { streak++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    return streak;
+  } catch { return 0; }
+}
+
+function updateDailyBar() {
+  const goal      = LEVEL_GOALS[S.level];
+  const todayReps = getDailyReps() + (S.running ? S.count : 0);
+  const pct       = Math.min(100, (todayReps / goal) * 100);
+  dailyFill.style.width = pct + '%';
+  dailyFill.classList.toggle('done', todayReps >= goal);
+  dailyPct.textContent  = `${todayReps} / ${goal}`;
+  streakVal.textContent = getStreak() + ' j';
+
+  if (todayReps >= goal && !dailyFill.classList.contains('done')) {
+    toast('Objectif du jour atteint !');
+  }
+}
+
 // ── Settings ───────────────────────────────────────────────────────────────
 thrRange.addEventListener('input', () => {
   S.threshold = +thrRange.value;
-  thrLbl.textContent = `${S.threshold} m/s²`;
+  thrLbl.textContent = S.threshold + ' m/s²';
+  saveSettings();
+});
+
+autoThrTog.addEventListener('change', () => {
+  S.autoThr          = autoThrTog.checked;
+  thrRange.disabled  = S.autoThr;
+  if (!S.autoThr) thrLbl.textContent = S.threshold + ' m/s²';
   saveSettings();
 });
 
 cdRange.addEventListener('input', () => {
-  S.cooldownMs = +cdRange.value;
-  cdLbl.textContent = `${(S.cooldownMs / 1000).toFixed(1)} s`;
+  S.cooldownMs       = +cdRange.value;
+  cdLbl.textContent  = (S.cooldownMs / 1000).toFixed(1) + ' s';
   saveSettings();
 });
 
-vibTog.addEventListener('change', () => {
-  S.vibrate = vibTog.checked;
-  saveSettings();
+vibTog.addEventListener('change',   () => { S.vibrate  = vibTog.checked;   saveSettings(); });
+voiceTog.addEventListener('change', () => { S.voiceOn  = voiceTog.checked; saveSettings(); });
+
+document.querySelectorAll('.chip-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    S.level = btn.dataset.level;
+    document.querySelectorAll('.chip-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    goalLbl.textContent = LEVEL_GOALS[S.level] + ' / j';
+    updateDailyBar();
+    saveSettings();
+  });
 });
-
-function saveSettings() {
-  localStorage.setItem('pu_cfg', JSON.stringify({
-    threshold:  S.threshold,
-    cooldownMs: S.cooldownMs,
-    vibrate:    S.vibrate,
-  }));
-}
-
-function loadSettings() {
-  try {
-    const c = JSON.parse(localStorage.getItem('pu_cfg') || '{}');
-    S.threshold  = c.threshold  ?? 1.5;
-    S.cooldownMs = c.cooldownMs ?? 700;
-    S.vibrate    = c.vibrate    ?? true;
-  } catch {}
-
-  thrRange.value       = S.threshold;
-  thrLbl.textContent   = `${S.threshold} m/s²`;
-  cdRange.value        = S.cooldownMs;
-  cdLbl.textContent    = `${(S.cooldownMs / 1000).toFixed(1)} s`;
-  vibTog.checked       = S.vibrate;
-}
 
 // ── Auto-calibration ───────────────────────────────────────────────────────
-const btnCalib    = $('btn-calib');
-const calibStatus = $('calib-status');
-const CALIB_MS    = 5000;
+const CALIB_MS = 5000;
 
-btnCalib.addEventListener('click', startCalibration);
-
-function startCalibration() {
+btnCalib.addEventListener('click', () => {
   if (S.calibTid !== null) return;
   S.calibPeak = 0;
   btnCalib.disabled = true;
 
   let remaining = Math.ceil(CALIB_MS / 1000);
   calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
-
-  const countdownId = setInterval(() => {
+  const cid = setInterval(() => {
     remaining--;
-    if (remaining > 0) {
-      calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
-    }
+    if (remaining > 0) calibStatus.textContent = `Faites vos pompes… ${remaining} s`;
   }, 1000);
 
   S.calibTid = setTimeout(() => {
-    clearInterval(countdownId);
-    S.calibTid = null;
+    clearInterval(cid);
+    S.calibTid        = null;
     btnCalib.disabled = false;
 
-    if (S.calibPeak < 0.1) {
-      calibStatus.textContent = 'Signal trop faible — refaites en appuyant plus fort.';
+    if (S.calibPeak < 0.05) {
+      calibStatus.textContent = 'Signal trop faible — réessayez en appuyant plus fort.';
       return;
     }
-    // Set threshold to 55 % of peak, rounded to 1 decimal
-    const suggested = Math.round(S.calibPeak * 0.55 * 10) / 10;
-    S.threshold         = suggested;
-    thrRange.value      = suggested;
-    thrLbl.textContent  = `${suggested} m/s²`;
-    saveSettings();
+    const suggested        = Math.round(S.calibPeak * 0.55 * 10) / 10;
+    S.threshold            = suggested;
+    S.autoThr              = false;
+    autoThrTog.checked     = false;
+    thrRange.disabled      = false;
+    thrRange.value         = Math.min(10, suggested);
+    thrLbl.textContent     = suggested + ' m/s²';
     calibStatus.textContent =
-      `✓ Pic mesuré : ${S.calibPeak.toFixed(2)} m/s² → seuil réglé à ${suggested} m/s²`;
-    toast(`Seuil auto-réglé : ${suggested} m/s²`);
+      `Pic : ${S.calibPeak.toFixed(2)} m/s² → seuil réglé à ${suggested} m/s²`;
+    saveSettings();
+    toast(`Seuil réglé : ${suggested} m/s²`);
   }, CALIB_MS);
+});
+
+function saveSettings() {
+  localStorage.setItem('pu_cfg', JSON.stringify({
+    threshold:  S.threshold,
+    autoThr:    S.autoThr,
+    cooldownMs: S.cooldownMs,
+    vibrate:    S.vibrate,
+    voiceOn:    S.voiceOn,
+    level:      S.level,
+  }));
+}
+
+function loadSettings() {
+  try {
+    const c    = JSON.parse(localStorage.getItem('pu_cfg') || '{}');
+    S.threshold  = c.threshold  ?? 1.5;
+    S.autoThr    = c.autoThr    ?? true;
+    S.cooldownMs = c.cooldownMs ?? 700;
+    S.vibrate    = c.vibrate    ?? true;
+    S.voiceOn    = c.voiceOn    ?? false;
+    S.level      = c.level      ?? 'intermediaire';
+  } catch {}
+
+  thrRange.value        = S.threshold;
+  thrLbl.textContent    = S.autoThr ? 'auto' : S.threshold + ' m/s²';
+  thrRange.disabled     = S.autoThr;
+  autoThrTog.checked    = S.autoThr;
+  cdRange.value         = S.cooldownMs;
+  cdLbl.textContent     = (S.cooldownMs / 1000).toFixed(1) + ' s';
+  vibTog.checked        = S.vibrate;
+  voiceTog.checked      = S.voiceOn;
+  goalLbl.textContent   = LEVEL_GOALS[S.level] + ' / j';
+
+  document.querySelectorAll('.chip-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === S.level);
+  });
+
+  updateDailyBar();
 }
 
 // ── History ────────────────────────────────────────────────────────────────
 function saveSession() {
   const duration = S.t0 ? Math.floor((Date.now() - S.t0) / 1000) : 0;
-  S.sessions.unshift({
-    id:       Date.now(),
-    count:    S.count,
-    duration,
-    date:     new Date().toISOString(),
-  });
+  S.sessions.unshift({ id: Date.now(), count: S.count, duration, date: new Date().toISOString() });
   if (S.sessions.length > 60) S.sessions.length = 60;
   persist();
   renderHistory();
-  updateBest();
   updateSessNum();
 }
 
@@ -937,45 +1060,38 @@ function loadHistory() {
   try { S.sessions = JSON.parse(localStorage.getItem('pu_hist') || '[]'); }
   catch { S.sessions = []; }
   renderHistory();
-  updateBest();
   updateSessNum();
 }
 
-function persist() {
-  localStorage.setItem('pu_hist', JSON.stringify(S.sessions));
-}
+function persist() { localStorage.setItem('pu_hist', JSON.stringify(S.sessions)); }
 
 function renderHistory() {
+  const goal = LEVEL_GOALS[S.level];
   if (!S.sessions.length) {
     sessList.innerHTML = '<p class="empty">Aucune session enregistrée</p>';
     return;
   }
-
   sessList.innerHTML = S.sessions.map(s => {
     const d       = new Date(s.date);
     const dateStr = d.toLocaleDateString('fr-FR', {
       day: 'numeric', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     });
-    const m   = Math.floor(s.duration / 60);
-    const sec = s.duration % 60;
-    const dur = `${m}:${String(sec).padStart(2,'0')}`;
-    const rpm = s.duration > 5
-      ? ` · ${(s.count / (s.duration / 60)).toFixed(1)} /min`
-      : '';
+    const dur  = `${Math.floor(s.duration/60)}:${String(s.duration%60).padStart(2,'0')}`;
+    const rpm  = s.duration > 5
+      ? ` · ${(s.count / (s.duration / 60)).toFixed(1)} /min` : '';
+    const done = s.count >= goal
+      ? `<div class="daily-done">Objectif atteint</div>` : '';
     return `
       <div class="sess-card">
         <div>
           <div class="sess-date">${dateStr}</div>
           <div class="sess-meta">${dur}${rpm}</div>
+          ${done}
         </div>
         <div class="sess-reps">${s.count}</div>
       </div>`;
   }).join('');
-}
-
-function updateBest() {
-  bestEl.textContent = S.sessions.reduce((m, s) => Math.max(m, s.count), 0);
 }
 
 function updateSessNum() {
@@ -987,7 +1103,6 @@ btnClear.addEventListener('click', () => {
   S.sessions = [];
   persist();
   renderHistory();
-  updateBest();
   updateSessNum();
   toast('Historique effacé');
 });
@@ -1001,13 +1116,6 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     $(id).classList.add('active');
     btn.classList.add('active');
   });
-});
-
-// Re-acquire wake lock if page becomes visible again
-document.addEventListener('visibilitychange', async () => {
-  if (S.running && S.wakeLock === null && document.visibilityState === 'visible') {
-    try { S.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
-  }
 });
 
 // ── Toast ──────────────────────────────────────────────────────────────────
