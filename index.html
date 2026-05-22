@@ -354,7 +354,7 @@
         <div class="row-top">
           <span class="row-name">Auto-calibrer</span>
         </div>
-        <p class="row-hint" style="margin-bottom:.65rem">Appuyez, faites <strong>3 pompes</strong>, le seuil manuel sera réglé.</p>
+        <p class="row-hint" style="margin-bottom:.65rem">Appuyez sur le bouton ci-dessous, puis faites <strong>3 pompes</strong> en touchant bien le téléphone avec la poitrine. Le seuil sera réglé automatiquement.</p>
         <button class="btn-calib" id="btn-calib">Lancer la calibration (5 s)</button>
         <div id="calib-status" style="font-size:.8rem;color:var(--acc);margin-top:.5rem;min-height:1.1em;"></div>
       </div>
@@ -990,7 +990,7 @@ btnCalib.addEventListener('click', () => {
     btnCalib.disabled = false;
 
     if (S.calibPeak < 0.05) {
-      calibStatus.textContent = 'Signal trop faible — réessayez en appuyant plus fort.';
+      calibStatus.textContent = 'Signal trop faible — refaites la calibration en descendant la poitrine jusqu\'au téléphone.';
       return;
     }
     const suggested        = Math.round(S.calibPeak * 0.55 * 10) / 10;
